@@ -1,80 +1,104 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Boas Práticas"
+description: "Guia de boas práticas para integração com a API do Frete Rápido"
 ---
 
-## Get started in three steps
+## Implementação eficiente
 
-Get your documentation site running locally and make your first customization.
+Siga estas práticas recomendadas para uma integração robusta e performática.
 
-### Step 1: Set up your local environment
+### Autenticação e Segurança
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion icon="key" title="Gerenciamento de tokens">
+    - Armazene tokens de forma segura (variáveis de ambiente)
+    - Implemente renovação automática de tokens
+    - Use HTTPS em todas as requisições
+    - Nunca exponha credenciais no código fonte
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+  <Accordion icon="shield" title="Validação de dados">
+    - Valide todos os dados de entrada
+    - Sanitize informações sensíveis nos logs
+    - Implemente rate limiting no seu lado
+    - Use timeouts apropriados nas requisições
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+### Performance e Confiabilidade
 
 <AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
+  <Accordion icon="gauge" title="Otimização de requisições">
+    - Cache cotações por tempo limitado
+    - Implemente retry com backoff exponencial
+    - Use connection pooling
+    - Monitore latência e taxa de erro
+  </Accordion>
+  <Accordion icon="server" title="Tratamento de erros">
+    - Implemente fallbacks para indisponibilidade
+    - Log detalhado para debugging
+    - Notificações para erros críticos
+    - Graceful degradation quando possível
   </Accordion>
 </AccordionGroup>
 
-### Step 3: Go live
+### Monitoramento e Logs
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<AccordionGroup>
+  <Accordion icon="chart-line" title="Métricas essenciais">
+    - Taxa de sucesso das requisições
+    - Tempo de resposta médio
+    - Volume de cotações por período
+    - Erros por tipo e frequência
+  </Accordion>
+  <Accordion icon="file-text" title="Estrutura de logs">
+    - Request ID para rastreabilidade
+    - Timestamp preciso
+    - Dados de contexto relevantes
+    - Níveis apropriados (ERROR, WARN, INFO)
+  </Accordion>
+</AccordionGroup>
 
-## Next steps
+## Padrões de integração
 
-Now that you have your docs running, explore these key features:
+Implementações recomendadas para cenários comuns:
 
 <CardGroup cols={2}>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
+<Card title="Cotação Assíncrona" icon="clock" href="/patterns/async-quote">
+  Implemente cotações não-bloqueantes para melhor UX.
 </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
+<Card title="Cache Inteligente" icon="database" href="/patterns/caching">
+  Estratégias de cache para reduzir latência.
 </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
+<Card title="Retry Policies" icon="refresh" href="/patterns/retry">
+  Políticas de retry resilientes e eficientes.
 </Card>
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
+<Card title="Webhook Handling" icon="webhook" href="/patterns/webhooks">
+  Processamento confiável de notificações.
 </Card>
 
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Checklist de produção
+
+<Steps>
+  <Step title="Ambiente de teste">
+    Valide integração completa em sandbox
+  </Step>
+  <Step title="Monitoramento">
+    Configure alertas e dashboards
+  </Step>
+  <Step title="Documentação">
+    Documente fluxos e procedimentos
+  </Step>
+  <Step title="Go-live">
+    Deploy gradual com monitoramento ativo
+  </Step>
+</Steps>
+
+<Warning>
+  **Importante:** Sempre teste em ambiente de sandbox antes de ir para produção. Monitore métricas de performance e erro continuamente.
+</Warning>
