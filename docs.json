@@ -32,14 +32,6 @@
           {
             "group": "Transportadora",
             "openapi": "/api-reference/external_carrier.yaml"
-          },
-          {
-            "group": "Contratação",
-            "openapi": "/api-reference/external_hire.yaml"
-          },
-          {
-            "group": "Embarcador",
-            "openapi": "/api-reference/external_shipper.yaml"
           }
         ]
       }
