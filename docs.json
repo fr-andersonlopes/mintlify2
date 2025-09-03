@@ -17,8 +17,7 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           }
         ]
@@ -26,27 +25,7 @@
       {
         "tab": "API reference",
         "groups": [
-          {
-            "group": "Autenticação",
-            "openapi": {
-              "source": "/api-reference/auth_external.yaml",
-              "directory": "api-reference"
-            }
-          },
-          {
-            "group": "Transportadora",
-            "openapi": {
-              "source": "/api-reference/external_carrier.yaml",
-              "directory": "api-reference"
-            }
-          },
-          {
-            "group": "Contratação",
-            "openapi": {
-              "source": "/api-reference/external_hire.yaml",
-              "directory": "api-reference"
-            }
-          },
+
           {
             "group": "Embarcador",
             "openapi": {
@@ -88,11 +67,6 @@
     "options": [
       "copy",
       "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
       "vscode"
     ]
   },
