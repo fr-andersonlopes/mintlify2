@@ -27,8 +27,8 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
-            "openapi": "/api-reference/external_hire.yaml"
+            "group": "Documentação",
+            "openapi": "/api-reference/*"
           }
         ]
       }
@@ -36,18 +36,8 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
+          "anchor": "Ajuda",
+          "href": "https://freterapido.movidesk.com/kb",
           "icon": "newspaper"
         }
       ]
@@ -60,33 +50,33 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Suporte",
+        "href": "mailto:suporte@freterapido.com"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://dash.freterapido.com.br"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "facebook": "https://www.youtube.com/channel/UCIzSeeeEa-6eR6GbYtDQR4w",
+      "instagram": "https://www.instagram.com/frete.rapido/",
+      "linkedin": "https://br.linkedin.com/company/frete-rapido"
     }
   }
 }

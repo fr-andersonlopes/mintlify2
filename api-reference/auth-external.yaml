@@ -1,0 +1,146 @@
+openapi: 3.0.1
+info:
+  title: APIs Frete Rápido - Contratação de Frete
+  version: 1.0.0
+  description: >
+    API oficial da Frete Rápido para autenticação.
+  contact:
+    name: Frete Rápido
+    url: https://freterapido.com.br
+servers:
+  - url: https://auth.freterapido.com
+    description: Servidor de Produção
+  - url: https://auth.homolog-freterapido.com
+    description: Servidor de Homologação
+x-logo:
+  url: https://freterapido.com.br/wp-content/uploads/2023/11/logo-teste-2-768x168.png
+  altText: Logo Frete Rápido
+paths:
+  /v1/login:
+    post:
+      summary: Login
+      description: Autentica o usuário e retorna um token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+  /v1/quote/login:
+    post:
+      summary: Login Quote
+      description: Autentica o usuário de cotação e retorna um token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+  /v1/refresh-token:
+    post:
+      summary: Refresh Token
+      description: Atualiza o token de autenticação
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomError'
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        data_expire_in:
+          type: string
+        expires_in:
+          type: integer
+        refresh_expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        scope:
+          type: string
+        token_type:
+          type: string
+    CustomError:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
