@@ -1,0 +1,1898 @@
+openapi: 3.0.1
+
+info:
+  title: APIs Frete Rápido - Transportador
+  version: 1.0.0
+  description: >
+    API oficial da Frete Rápido para integração com transportadoras.
+  contact:
+    name: Frete Rápido
+    url: https://freterapido.com.br
+servers:
+  - url: https://api.freterapido.com
+    description: Servidor de Produção
+  - url: https://api.homolog-freterapido.com
+    description: Servidor de Homologação
+
+x-logo:
+  url: https://freterapido.com.br/wp-content/uploads/2023/11/logo-teste-2-768x168.png
+  altText: Logo Frete Rápido
+
+paths:
+  /cotacao:
+    post:
+      summary: Cotação de Frete
+      description: >
+        Disparo de dados para cotação de frete.
+
+        A Frete Rápido envia essa requisição para a transportadora com os dados da carga.
+
+        A transportadora deve responder com uma lista de cotações.
+      operationId: receberCotacaoFrete
+      tags:
+        - Cotação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - remetente
+                - destinatario
+                - carga
+                - volumes
+                - tipo_cobranca
+              properties:
+                modal:
+                  type: string
+                  example: ""
+                tipo_cobranca:
+                  type: integer
+                  enum: [1, 2]
+                  example: 1
+                  description: 1 = CIF, 2 = FOB
+                remetente:
+                  type: object
+                  required: [cnpj, inscricao_estadual, cep]
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                    inscricao_estadual:
+                      type: string
+                      example: "123456789"
+                    cep:
+                      type: string
+                      example: "01001000"
+                expedidor:
+                  type: object
+                  required: [cnpj, inscricao_estadual, cep]
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                    inscricao_estadual:
+                      type: string
+                      example: "123456789"
+                    cep:
+                      type: string
+                      example: "01001000"
+                destinatario:
+                  type: object
+                  required: [cep]
+                  properties:
+                    cnpj_cpf:
+                      type: string
+                      example: "98765432100012"
+                    inscricao_estadual:
+                      type: string
+                      example: "987654321"
+                    cep:
+                      type: string
+                      example: "22222222"
+                carga:
+                  type: object
+                  required:
+                    [
+                      valor_total,
+                      cubagem,
+                      peso_cubado,
+                      peso_real,
+                      total_volumes,
+                    ]
+                  properties:
+                    valor_total:
+                      type: number
+                      format: float
+                      example: 500.00
+                    cubagem:
+                      type: number
+                      format: float
+                      example: 2.5
+                    peso_cubado:
+                      type: number
+                      format: float
+                      example: 200.00
+                    peso_real:
+                      type: number
+                      format: float
+                      example: 180.00
+                    total_volumes:
+                      type: integer
+                      example: 10
+                volumes:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      [
+                        tipo,
+                        altura,
+                        largura,
+                        comprimento,
+                        quantidade,
+                        peso_real,
+                        valor,
+                      ]
+                    properties:
+                      tipo:
+                        type: integer
+                        example: 1
+                      altura:
+                        type: number
+                        format: float
+                        example: 0.5
+                      largura:
+                        type: number
+                        format: float
+                        example: 0.4
+                      comprimento:
+                        type: number
+                        format: float
+                        example: 1.0
+                      quantidade:
+                        type: integer
+                        example: 5
+                      peso_real:
+                        type: number
+                        format: float
+                        example: 10.0
+                      valor:
+                        type: number
+                        format: float
+                        example: 200.0
+      responses:
+        "200":
+          description: Sucesso — Lista de cotações da transportadora
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - preco
+                    - prazo_entrega
+                    - servico
+                    - validade_cotacao
+                  properties:
+                    preco:
+                      type: number
+                      format: float
+                      example: 120.50
+                    prazo_entrega:
+                      type: integer
+                      example: 3
+                    servico:
+                      type: string
+                      example: "EXP"
+                    descricao_servico:
+                      type: string
+                      nullable: true
+                      example: "Serviço expresso"
+                    validade_cotacao:
+                      type: string
+                      format: date
+                      example: "2025-06-30"
+                    identificador:
+                      type: string
+                      nullable: true
+                      example: "FR123456"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /coleta:
+    post:
+      summary: Solicitação de Coleta
+      description: >
+        Disparo de dados para como ordem de coleta.
+
+        A Transportadora pode preparar um webservice para receber as solicitações de coleta do Embarcador.
+
+        A Frete Rápido irá disparar o conjunto de dados abaixo, através de uma requisição.
+      operationId: receberSolicitaçãoColeta
+      tags:
+        - Coleta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destinatario
+                - id_frete
+                - remetente
+                - servico
+                - tipo_cobranca
+                - token_oferta
+                - transportadora
+                - volumes
+              properties:
+                canal:
+                  type: string
+                  example: ""
+                  description: Canal utilizado no momento da cotação/simulação.
+                data_coleta:
+                  type: string
+                  format: date
+                  example: "2024-05-24"
+                  description: Data de coleta informada pelo embarcador (formato YYYY-MM-DD).
+                data_faturamento:
+                  type: string
+                  format: date-time
+                  example: "2024-05-24 15:30:00"
+                  description: Data de faturamento do pedido na loja (formato YYYY-MM-DD HH:mm:ss).
+                data_pedido:
+                  type: string
+                  format: date-time
+                  example: "2024-05-20 10:00:00"
+                  description: Data de criação do pedido na loja (formato YYYY-MM-DD HH:mm:ss).
+                destinatario:
+                  type: object
+                  required:
+                    - cnpj_cpf
+                    - endereco
+                    - nome
+                  description: Dados do destinatário da carga.
+                  properties:
+                    cnpj_cpf:
+                      type: string
+                      example: "12345678000199"
+                      description: CNPJ ou CPF do destinatário da carga (11 ou 14 caracteres, sem formatação).
+                    email:
+                      type: string
+                      format: email
+                      example: "cliente@exemplo.com"
+                      description: E-mail do destinatário da carga.
+                    endereco:
+                      type: object
+                      required:
+                        - bairro
+                        - cep
+                        - cidade
+                        - estado
+                        - numero
+                        - rua
+                      description: Endereço do destinatário.
+                      properties:
+                        bairro:
+                          type: string
+                          example: "Centro"
+                          description: Bairro do destinatário.
+                        cep:
+                          type: string
+                          example: "01001000"
+                          description: CEP do destinatário (8 dígitos, sem formatação).
+                        cidade:
+                          type: string
+                          example: "São Paulo"
+                          description: Cidade do destinatário.
+                        complemento:
+                          type: string
+                          example: "Apto 101"
+                          description: Complemento do endereço.
+                        estado:
+                          type: string
+                          example: "SP"
+                          description: Estado do destinatário (sigla).
+                        numero:
+                          type: string
+                          example: "100"
+                          description: Número do local do destinatário.
+                        rua:
+                          type: string
+                          example: "Rua das Flores"
+                          description: Logradouro do destinatário.
+                    inscricao_estadual:
+                      type: string
+                      example: "123456789"
+                      description: Inscrição Estadual do destinatário, se pessoa jurídica.
+                    nome:
+                      type: string
+                      example: "Cliente Exemplo Ltda"
+                      description: Nome ou Razão Social do destinatário da carga.
+                    telefone:
+                      type: string
+                      example: "(11) 99999-9999"
+                      description: Telefone do destinatário da carga.
+                expedidor:
+                  type: object
+                  description: Dados do expedidor da carga (se houver).
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                      description: CNPJ do expedidor da carga (14 caracteres, sem formatação).
+                    endereco:
+                      type: object
+                      description: Endereço do expedidor.
+                      properties:
+                        bairro:
+                          type: string
+                          example: "Vila Mariana"
+                          description: Bairro do expedidor.
+                        cep:
+                          type: string
+                          example: "04001000"
+                          description: CEP do expedidor.
+                        cidade:
+                          type: string
+                          example: "São Paulo"
+                          description: Cidade do expedidor.
+                        complemento:
+                          type: string
+                          example: "Galpão 2"
+                          description: Complemento do endereço.
+                        estado:
+                          type: string
+                          example: "SP"
+                          description: Estado do expedidor (sigla).
+                        numero:
+                          type: string
+                          example: "1500"
+                          description: Número do local do expedidor.
+                        rua:
+                          type: string
+                          example: "Rua das Acácias"
+                          description: Logradouro do expedidor.
+                    inscricao_estadual:
+                      type: string
+                      example: "987654321"
+                      description: Inscrição Estadual do expedidor.
+                    nome_fantasia:
+                      type: string
+                      example: "Expedidor Exemplo"
+                      description: Nome fantasia do expedidor.
+                    razao_social:
+                      type: string
+                      example: "Expedidor Exemplo Ltda"
+                      description: Razão social do expedidor.
+                forma_pagamento:
+                  type: string
+                  example: "Boleto"
+                  description: Forma de pagamento do pedido.
+                id_frete:
+                  type: string
+                  example: "AB12345678901"
+                  description: Identificador único da cotação/frete na Frete Rápido.
+                identificador:
+                  type: string
+                  example: "COLETA20240524"
+                  description: Identificador fornecido pela transportadora.
+                metadados:
+                  type: array
+                  description: Informações adicionais da solicitação de coleta (até 64 itens).
+                  items:
+                    type: object
+                    required:
+                      - chave
+                      - valor
+                    properties:
+                      chave:
+                        type: string
+                        example: "observacao_interna"
+                        description: Nome do atributo extra da solicitação de coleta.
+                      valor:
+                        type: string
+                        example: "Frágil, manusear com cuidado"
+                        description: Valor do atributo da chave informada.
+                nfe:
+                  type: object
+                  description: Informações da NF-e (se houver).
+                  properties:
+                    chave_acesso:
+                      type: string
+                      example: "35191234567890123456789012345678901234567890"
+                      description: Chave de acesso da NF-e.
+                    data_emissao:
+                      type: string
+                      format: date-time
+                      example: "2024-05-20 14:00:00"
+                      description: Data de emissão da NF-e.
+                    numero:
+                      type: string
+                      example: "12345"
+                      description: Número da NF.
+                    quantidade_volumes:
+                      type: string
+                      example: "10"
+                      description: Quantidade de volumes da NF.
+                    serie:
+                      type: string
+                      example: "1"
+                      description: Série da NF.
+                    valor:
+                      type: number
+                      format: float
+                      example: 1000.00
+                      description: Valor total da NF.
+                    valor_itens:
+                      type: number
+                      format: float
+                      example: 950.00
+                      description: Valor dos itens da NF.
+                nfes:
+                  type: array
+                  description: Lista com informações de várias NF-e (se houver).
+                  items:
+                    type: object
+                    properties:
+                      chave_acesso:
+                        type: string
+                        example: "35191234567890123456789012345678901234567890"
+                        description: Chave de acesso da NF-e.
+                      data_emissao:
+                        type: string
+                        format: date-time
+                        example: "2024-05-20 14:00:00"
+                        description: Data de emissão da NF-e.
+                      numero:
+                        type: string
+                        example: "12345"
+                        description: Número da NF.
+                      quantidade_volumes:
+                        type: string
+                        example: "10"
+                        description: Quantidade de volumes da NF.
+                      serie:
+                        type: string
+                        example: "1"
+                        description: Série da NF.
+                      valor:
+                        type: number
+                        format: float
+                        example: 1000.00
+                        description: Valor total da NF.
+                      valor_itens:
+                        type: number
+                        format: float
+                        example: 950.00
+                        description: Valor dos itens da NF.
+                numero_pedido:
+                  type: string
+                  example: "123456"
+                  description: Número do pedido na loja.
+                obs_cliente:
+                  type: string
+                  example: "Por favor, entregar no horário comercial."
+                  description: Observação do cliente sobre o pedido.
+                remetente:
+                  type: object
+                  required:
+                    - cnpj
+                    - endereco
+                    - inscricao_estadual
+                    - nome_fantasia
+                    - razao_social
+                  description: Dados do remetente / origem da carga.
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                      description: CNPJ do remetente (14 dígitos, sem formatação).
+                    endereco:
+                      type: object
+                      required:
+                        - bairro
+                        - cep
+                        - cidade
+                        - estado
+                        - numero
+                        - rua
+                      description: Endereço do remetente.
+                      properties:
+                        bairro:
+                          type: string
+                          example: "Centro"
+                          description: Bairro do remetente.
+                        cep:
+                          type: string
+                          example: "01001000"
+                          description: CEP do remetente.
+                        cidade:
+                          type: string
+                          example: "São Paulo"
+                          description: Cidade do remetente.
+                        complemento:
+                          type: string
+                          example: "Sala 101"
+                          description: Complemento do endereço.
+                        estado:
+                          type: string
+                          example: "SP"
+                          description: Estado do remetente (sigla).
+                        numero:
+                          type: string
+                          example: "100"
+                          description: Número do local do remetente.
+                        rua:
+                          type: string
+                          example: "Av. Paulista"
+                          description: Logradouro do remetente.
+                    inscricao_estadual:
+                      type: string
+                      example: "123456789"
+                      description: Inscrição Estadual do remetente.
+                    nome_fantasia:
+                      type: string
+                      example: "Remetente Exemplo"
+                      description: Nome fantasia do remetente.
+                    razao_social:
+                      type: string
+                      example: "Remetente Exemplo Ltda"
+                      description: Razão social do remetente.
+                servico:
+                  type: string
+                  example: "PAC"
+                  description: Serviço informado na cotação de frete.
+                tipo_cobranca:
+                  type: string
+                  enum:
+                    - CIF
+                    - FOB
+                  example: "CIF"
+                  description: Tipo de cobrança do frete.
+                token_oferta:
+                  type: string
+                  example: "TOKENOFERTA123456"
+                  description: Identificador da cotação realizada antes do frete ter sido contratado.
+                transportadora:
+                  type: object
+                  required:
+                    - cnpj
+                    - valor_cotado
+                  description: Informações da transportadora.
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                      description: CNPJ da transportadora.
+                    valor_cotado:
+                      type: string
+                      example: "120.00"
+                      description: Valor cotado do frete.
+                valor_pedido:
+                  type: number
+                  format: float
+                  example: 1500.00
+                  description: Valor total do pedido.
+                volumes:
+                  type: array
+                  description: Lista com um ou mais volumes da carga.
+                  items:
+                    type: object
+                    required:
+                      - altura
+                      - comprimento
+                      - largura
+                      - peso_real
+                      - quantidade
+                      - tipo
+                      - valor
+                    properties:
+                      altura:
+                        type: number
+                        format: float
+                        example: 0.50
+                        description: Altura do volume unitário em metros.
+                      comprimento:
+                        type: number
+                        format: float
+                        example: 0.70
+                        description: Comprimento do volume unitário em metros.
+                      descricao:
+                        type: string
+                        example: "Caixa de papelão com livros"
+                        description: Descrição do volume concatenada com a descrição do produto.
+                      largura:
+                        type: number
+                        format: float
+                        example: 0.40
+                        description: Largura do volume unitário em metros.
+                      peso_real:
+                        type: number
+                        format: float
+                        example: 3.50
+                        description: Peso total em Kg dos volumes informados.
+                      quantidade:
+                        type: integer
+                        example: 2
+                        description: Quantidade de volumes iguais e do mesmo tipo.
+                      sku:
+                        type: string
+                        example: "SKU12345"
+                        description: SKU do produto informado.
+                      tag:
+                        type: string
+                        example: "fragil"
+                        description: Tag do volume/produto informado.
+                      tipo:
+                        type: integer
+                        example: 1
+                        description: Tipo do volume informado (vide tabela de tipos de volumes).
+                      valor:
+                        type: number
+                        format: float
+                        example: 140.00
+                        description: Valor total do conjunto de volumes informados.
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /quotes/{id_frete}/volume-occurrence:
+    post:
+      summary: Criar volume para rastreio
+      description: >
+        Método que permite criar os status iniciais do volume de um frete.
+
+        Sua Transportadora deverá enviar os dados abaixo, através de uma requisição.
+      operationId: criarVolumeRastreio
+      tags:
+        - Rastreio
+      parameters:
+        - name: id_frete
+          in: path
+          description: Identificador único de cada cotação/frete na Frete Rápido. Através deste é possível obter e relacionar todos os outros dados.
+          required: true
+          schema:
+            type: string
+            minLength: 13
+            maxLength: 13
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data_hora
+                - codigo_volume
+              properties:
+                data_hora:
+                  type: string
+                  format: date-time
+                  description: Data e hora da ocorrência no formato "YYYY-MM-DD hh:mm:ss"
+                  example: "2025-05-24 15:30:00"
+                codigo_volume:
+                  type: string
+                  description: Código de rastreio do volume
+                  example: "VOL123456789"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        default:
+          description: Erro inesperado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+                    description: Mensagem de erro
+                    example: "Frete não encontrado"
+
+  /quotes/occurrences:
+    post:
+      summary: Atualizar ocorrências do frete
+      description: >
+        Método que permite atualizar de forma simples as ocorrências de um frete por mais de um parâmetro.
+
+        Sua Transportadora deverá enviar os dados abaixo, através de uma requisição.
+
+        Observação sobre o De/Para das Ocorrências:
+        Os códigos das ocorrências de sua transportadora devem ser enviados previamente para inserção na plataforma.
+
+        Observação sobre o rastreio por volume:
+        Em caso de rastreio por volumes, será necessário criar os volumes de cada frete antes de enviar as ocorrências.
+      operationId: atualizarOcorrenciasFrete
+      tags:
+        - Ocorrência de frete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cnpj_remetente
+                - ocorrencia
+                - data_hora
+                - metadados
+              properties:
+                cnpj_remetente:
+                  type: string
+                  description: CNPJ da conta registrada na Frete Rápido
+                  pattern: '^\d{14}$'
+                  example: "12345678000195"
+                numero_pedido:
+                  type: string
+                  description: Número do pedido contratado na Frete Rápido
+                  example: "12345"
+                numero_pedido_pai:
+                  type: string
+                  description: Número do Pedido Pai de um frete contratado na Frete Rápido
+                  example: "54321"
+                codigo_volume:
+                  type: string
+                  description: Código de rastreio do volume
+                  example: "VOL123456789"
+                chave_acesso:
+                  type: string
+                  description: Chave de acesso da nota fiscal
+                  example: "35190512345678000195550010000000011000000011"
+                numero:
+                  type: string
+                  description: Número da nota fiscal - Não informar o zero à esquerda
+                  example: "123"
+                serie:
+                  type: string
+                  description: Série da nota fiscal - Obrigatório se informado número
+                  example: "1"
+                chave:
+                  type: string
+                  maxLength: 255
+                  description: Nome do atributo de informação extra da solicitação de coleta, deve ser nome único para chave
+                  example: "informacao_adicional"
+                valor:
+                  type: string
+                  description: Valor do atributo da chave informada
+                  example: "algum valor"
+                ocorrencia:
+                  type: integer
+                  description: Código da ocorrência/status da sua Transportadora previamente informado à Frete Rápido
+                  example: 10
+                data_hora:
+                  type: string
+                  format: date-time
+                  description: Data e hora da ocorrência ("YYYY-MM-DD hh:mm:ss")
+                  example: "2025-05-24 15:30:00"
+                mensagem:
+                  type: string
+                  maxLength: 255
+                  description: Mensagem de texto sobre a ocorrência
+                  example: "Entregue com sucesso"
+                data_reentrega:
+                  type: string
+                  format: date
+                  description: Data de previsão para reentrega ("YYYY-MM-DD")
+                  example: "2025-05-30"
+                prazo_devolucao:
+                  type: integer
+                  description: Prazo em dias úteis para devolução da carga
+                  example: 5
+                comprovantes:
+                  type: array
+                  description: Link para acesso ao comprovante da ocorrência (link permanente)
+                  items:
+                    type: string
+                    format: uri
+                  example:
+                    - "https://www.freterapido.com/comprovantes/entrega/1.jpg"
+                codigos_redespacho:
+                  type: array
+                  description: Código de rastreio em caso de redespacho
+                  items:
+                    type: string
+                  example:
+                    - "abc-123"
+                metadados:
+                  type: array
+                  maxItems: 64
+                  description: Array de objetos contendo chave e valor com as informações adicionais da contratação
+                  items:
+                    type: object
+                    properties:
+                      chave:
+                        type: string
+                        maxLength: 255
+                        description: Nome do atributo extra
+                        example: "info_extra"
+                      valor:
+                        type: string
+                        maxLength: 255
+                        description: Valor do atributo extra
+                        example: "valor extra"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        default:
+          description: Erro inesperado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+                    description: Mensagem de erro
+                    example: "Frete não encontrado"
+
+  /quotes/{id_frete}/occurrences:
+    post:
+      summary: Atualizar ocorrências do frete por ID Frete Rápido
+      description: >
+        Método que permite atualizar de forma simples as ocorrências de um frete.
+
+        Sua Transportadora deverá enviar os dados abaixo, através de uma requisição.
+
+        Observação sobre o De/Para das Ocorrências:
+        Os códigos das ocorrências de sua transportadora devem ser enviados previamente para inserção na plataforma.
+
+        Observação sobre o rastreio por volume:
+        Em caso de rastreio por volumes, será necessário criar os volumes de cada frete antes de enviar as ocorrências.
+      operationId: atualizarOcorrenciasPorIdFrete
+      tags:
+        - Ocorrência de frete
+      parameters:
+        - name: id_frete
+          in: path
+          description: Identificador único de cada cotação/frete na Frete Rápido
+          required: true
+          schema:
+            type: string
+            minLength: 13
+            maxLength: 13
+            example: "FR12345678901"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ocorrencia
+                - data_hora
+                - metadados
+              properties:
+                ocorrencia:
+                  type: integer
+                  description: Código da ocorrência / status da sua Transportadora previamente informado à Frete Rápido
+                  example: 0
+                data_hora:
+                  type: string
+                  format: date-time
+                  description: Data e hora da ocorrência ("YYYY-MM-DD hh:mm:ss")
+                  example: "2025-05-24 15:30:00"
+                codigo_volume:
+                  type: string
+                  description: Código de rastreio do volume
+                  example: "VOL123456789"
+                mensagem:
+                  type: string
+                  maxLength: 255
+                  description: Mensagem de texto livre
+                  example: "Entrega realizada com sucesso"
+                data_reentrega:
+                  type: string
+                  format: date
+                  description: Data de previsão para reentrega ("YYYY-MM-DD")
+                  example: "2025-05-30"
+                prazo_devolucao:
+                  type: integer
+                  description: Prazo em dias úteis para devolução da carga
+                  example: 5
+                comprovantes:
+                  type: array
+                  description: Link para acesso ao comprovante da ocorrência (link permanente)
+                  items:
+                    type: string
+                    format: uri
+                  example:
+                    - "https://www.freterapido.com/comprovantes/entrega/1.jpg"
+                codigos_redespacho:
+                  type: array
+                  description: Código de rastreio em caso de redespacho
+                  items:
+                    type: string
+                  example:
+                    - "abc-123"
+                metadados:
+                  type: array
+                  maxItems: 64
+                  description: Array de objetos contendo chave e valor com informações adicionais da contratação
+                  items:
+                    type: object
+                    properties:
+                      chave:
+                        type: string
+                        maxLength: 255
+                        description: Nome do atributo extra (único)
+                        example: "info_extra"
+                      valor:
+                        type: string
+                        maxLength: 255
+                        description: Valor do atributo extra
+                        example: "valor extra"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        default:
+          description: Erro inesperado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erro:
+                    type: string
+                    description: Mensagem de erro
+                    example: "Frete não encontrado"
+
+  /tracking/coordinates:
+    post:
+      summary: Inserir coordenadas do pedido
+      description: >
+        Através deste método é possível inserir coordenadas da entrega do pedido, que serão apresentadas no mapa da página de rastreio.
+
+        Caso já exista algum pedido/rastreio com as mesmas informações, ele será atualizado.
+
+        Para vincular as coordenadas a algum frete, é obrigatório conter ao menos um dos seguintes campos preenchidos: freightId, orderNumber ou invoiceKey.
+      operationId: inserirCoordenadasPedido
+      tags:
+        - Coordenadas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - finished
+                - points
+              properties:
+                freightId:
+                  type: string
+                  description: ID do frete
+                  example: "FR1234567890"
+                orderNumber:
+                  type: string
+                  description: Número do pedido
+                  example: "PED-987654"
+                invoiceKey:
+                  type: string
+                  description: Chave de acesso da NF-e
+                  example: "35230710836895000114550010000123451234567891"
+                finished:
+                  type: boolean
+                  description: Indica se o pedido foi finalizado
+                  example: false
+                points:
+                  type: array
+                  description: Lista de coordenadas da entrega
+                  items:
+                    type: object
+                    required:
+                      - latitude
+                      - longitude
+                    properties:
+                      latitude:
+                        type: number
+                        format: float
+                        minimum: -90
+                        maximum: 90
+                        description: Latitude da coordenada
+                        example: -23.55052
+                      longitude:
+                        type: number
+                        format: float
+                        minimum: -180
+                        maximum: 180
+                        description: Longitude da coordenada
+                        example: -46.633308
+      responses:
+        "201":
+          description: Coordenadas criadas ou atualizadas com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /quotes/invoices/ctes:
+    post:
+      summary: Registrar Conhecimento de Transporte (CT-e)
+      description: >
+        Permite registrar os componentes de um Conhecimento de Transporte (CT-e) vinculado à nota fiscal.
+
+        Essa operação possibilita que o embarcador acompanhe os valores atualizados dos serviços contratados.
+      operationId: registrarConhecimentoTransporte
+      tags:
+        - Conhecimento de Transporte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cnpj_transportadora
+                - conhecimentos
+              properties:
+                cnpj_transportadora:
+                  type: string
+                  description: CNPJ da transportadora
+                  example: "12345678000199"
+                conhecimentos:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - acao
+                      - cnpj_embarcador
+                      - numero
+                      - serie
+                      - chave_acesso
+                      - data_emissao
+                      - numero_nf
+                      - serie_nf
+                      - tipo_frete
+                      - valor
+                      - tipo_operacao
+                    properties:
+                      acao:
+                        type: string
+                        enum: ["I", "C", "E", "ST"]
+                        description: >
+                          Código da ação do CT-e.
+
+                          Códigos disponíveis:
+                            - I = incluir
+                            - C = complementar
+                            - E = excluir
+                            - ST = substituir
+                        example: "I"
+                      cte_substituido:
+                        type: object
+                        properties:
+                          chave_acesso:
+                            type: string
+                            example: "12345678901234567890123456789012345678901234"
+                          numero:
+                            type: integer
+                            example: 123
+                          serie:
+                            type: integer
+                            example: 1
+                      cnpj_embarcador:
+                        type: string
+                        example: "11222333000181"
+                      cnpj_consignatario:
+                        type: string
+                        example: "99888777000155"
+                      cnpj_emissor_conhecimento:
+                        type: string
+                        example: "33445566000122"
+                      numero:
+                        type: integer
+                        example: 789456
+                      serie:
+                        type: integer
+                        example: 1
+                      chave_acesso:
+                        type: string
+                        example: "35190612345678000123550010000000011000000010"
+                      protocolo:
+                        type: string
+                        example: "135190000000001"
+                      data_emissao:
+                        type: string
+                        format: date-time
+                        example: "2025-05-23 14:30:00"
+                      processamento:
+                        type: string
+                        format: date-time
+                        example: "2025-05-23 15:00:00"
+                      numero_nf:
+                        type: integer
+                        example: 56789
+                      serie_nf:
+                        type: integer
+                        example: 1
+                      tipo_frete:
+                        type: string
+                        enum: ["C", "F"]
+                        example: "F"
+                      peso_taxado:
+                        type: number
+                        format: float
+                        example: 100.5
+                      peso_bruto:
+                        type: number
+                        format: float
+                        example: 110.7
+                      valor:
+                        type: number
+                        format: float
+                        example: 1520.75
+                      base_calculo_icms:
+                        type: number
+                        format: float
+                        example: 1200.00
+                      percentual_icms:
+                        type: number
+                        format: float
+                        example: 12.0
+                      valor_icms:
+                        type: number
+                        format: float
+                        example: 144.00
+                      quantidade_volumes:
+                        type: integer
+                        example: 10
+                      valor_frete_peso_volume:
+                        type: number
+                        example: 250.00
+                      valor_coleta:
+                        type: number
+                        example: 50.00
+                      valor_despacho:
+                        type: number
+                        example: 25.00
+                      valor_redespacho:
+                        type: number
+                        example: 35.00
+                      valor_adicional:
+                        type: number
+                        example: 15.00
+                      pedagio:
+                        type: number
+                        example: 20.00
+                      aliquota_difal_origem:
+                        type: number
+                        example: 1.5
+                      aliquota_difal_destino:
+                        type: number
+                        example: 1.2
+                      difal_icms_origem:
+                        type: number
+                        example: 10.0
+                      difal_icms_destino:
+                        type: number
+                        example: 5.0
+                      advalorem:
+                        type: number
+                        example: 2.5
+                      ademe:
+                        type: number
+                        example: 3.0
+                      sec_cat:
+                        type: number
+                        example: 1.5
+                      itr:
+                        type: number
+                        example: 0.8
+                      tep:
+                        type: number
+                        example: 2.2
+                      trt:
+                        type: number
+                        example: 1.9
+                      tas:
+                        type: number
+                        example: 1.0
+                      suframa:
+                        type: number
+                        example: 0.5
+                      iss:
+                        type: number
+                        example: 18.00
+                      gris:
+                        type: number
+                        example: 12.00
+                      pis:
+                        type: number
+                        example: 0.65
+                      cofins:
+                        type: number
+                        example: 3.0
+                      cubagem:
+                        type: number
+                        example: 8.5
+                      substituicao_tributaria:
+                        type: boolean
+                        example: true
+                      cfop:
+                        type: integer
+                        example: 5353
+                      tipo_operacao:
+                        type: string
+                        enum:
+                          [
+                            "N",
+                            "C",
+                            "D",
+                            "E",
+                            "O",
+                            "R",
+                            "S",
+                            "T",
+                            "W",
+                            "X",
+                            "Y",
+                            "Z",
+                          ]
+                        description: |
+                          Código do tipo de operação.
+
+                          Códigos disponíveis:
+                            N = NORMAL
+                            C = COMPLEMENTAR
+                            D = CONHECIMENTO DE DEVOLUÇÃO
+                            E = NORMAL DE ENTRADA
+                            O = NORMAL DE RETORNO
+                            R = CONHECIMENTO DE REENTREGA
+                            S = NORMAL DE SAÍDA
+                            T = NORMAL DE TRANSFERÊNCIA INTERNA
+                            W = COMPLEMENTAR DE RETORNO
+                            X = COMPLEMENTAR DE ENTRADA
+                            Y = COMPLEMENTAR DE SAÍDA
+                            Z = COMPLEMENTAR DE TRANSF. INTERNA
+                        example: "N"
+                      tipo_transporte:
+                        type: string
+                        enum:
+                          - "12"
+                          - "21"
+                          - "23"
+                          - "25"
+                          - "31"
+                          - "32"
+                          - "34"
+                          - "41"
+                          - "43"
+                          - "51"
+                          - "52"
+                          - "55"
+                          - "101"
+                          - "BR01"
+                          - "BR02"
+                          - "BR03"
+                          - "BR04"
+                          - "BR05"
+                          - "BR06"
+                          - "BR07"
+                          - "BR08"
+                          - "BR10"
+                          - "BR11"
+                          - "BR12"
+                          - "BR13"
+                          - "BR50"
+                          - "BR51"
+                          - "BR60"
+                          - "BR80"
+                          - "CTB"
+                          - "C20"
+                          - "C40"
+                          - "C4H"
+                          - "C2R"
+                          - "C4R"
+                        description: |
+                          Código do tipo de transporte.
+
+                          Códigos disponíveis:
+                            12   = NAVIO TANQUE
+                            21   = VAGÃO FERROVIÁRIO TANQUE
+                            23   = VAGÃO FERROVIÁRIO GRANELEIRO
+                            25   = EXPRESSO FERROVIÁRIO
+                            31   = CAMINHÃO (CARGA SECA)
+                            32   = CAMINHÃO TANQUE (CARGA LÍQUIDA)
+                            34   = REMESSA EXPRESSA RODOVIÁRIA
+                            41   = FRETE AÉREO
+                            43   = EXPRESSO AÉREO
+                            51   = ENCOMENDA POSTAL
+                            52   = CORREIO EXPRESSO
+                            55   = CORREIO AÉREO
+                            101  = MENSAGEIRO EXPRESSO
+                            BR01 = PERUAS (KOMBI, BESTA, ETC.)
+                            BR02 = CAMINHONETE 0,5 TON (SAVEIRO, ETC.)
+                            BR03 = TOCO ABERTO
+                            BR04 = TOCO FECHADO
+                            BR05 = TRUCK ABERTO
+                            BR06 = TRUCK FECHADO
+                            BR07 = CARRETA ABERTA
+                            BR08 = CARRETA FECHADA
+                            BR10 = TRUCK REFRIGERADO
+                            BR11 = CARRETA REFRIGERADA
+                            BR12 = TRUCK SIDER
+                            BR13 = CARRETA SIDER
+                            BR50 = FURGÃO 3,5 TON. (SPRINTER, ETC.)
+                            BR51 = CAMINHONETE 1 TON (F1000, S10, ETC.)
+                            BR60 = CARRETA 60 METROS CÚBICOS
+                            BR80 = CARRETA 80 METROS CÚBICOS
+                            CTB  = CONTAINER BUGGY
+                            C20  = CONTAINER 20 PÉS
+                            C40  = CONTAINER 40 PÉS
+                            C4H  = CONTAINER 40 PÉS HC
+                            C2R  = CONTAINER 20 PÉS REFRIGERADO
+                            C4R  = CONTAINER 40 PÉS REFRIGERADO
+                        example: "31"
+
+      responses:
+        "201":
+          description: Requisição processada com sucesso.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /quotes/attachment:
+    post:
+      summary: Comprovantes de Entrega
+      description: >
+        Método que permite receber os comprovantes de entrega.
+
+        Para registrar um novo anexo, basta informar os dados abaixo em uma requisição. Os arquivos devem estar disponíveis em um link HTTPS nos formatos JPG, PNG ou PDF.
+      operationId: receberComprovanteEntrega
+      tags:
+        - Comprovante de Entrega
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome_arquivo
+                - link
+              properties:
+                nome_arquivo:
+                  type: string
+                  description: Nome do arquivo
+                  example: "Frete Rápido"
+                link:
+                  type: string
+                  format: uri
+                  description: >
+                    URL com o link do arquivo a anexar. Deve ser em formato JPG, PNG ou PDF, e obrigatoriamente com `https`.
+                  example: "https://freterapido.com/wp-content/uploads/2019/11/clock-inteligencia-logistica.png"
+                cnpj_remetente:
+                  type: string
+                  description: >
+                    CNPJ da conta registrada na Frete Rápido (obrigatório se informado apenas número do pedido, número do pedido pai ou nota fiscal).
+                  example: "12345678000190"
+                comprovante_entrega:
+                  type: integer
+                  enum: [0, 1]
+                  description: >
+                    Define se o anexo é um comprovante de entrega.  
+                    1 = Sim, 0 = Não
+                  example: 1
+                id_frete:
+                  type: string
+                  description: Identificador do frete contratado na Frete Rápido
+                  example: "FR12345678901"
+                numero_pedido:
+                  type: string
+                  description: Número do pedido contratado na Frete Rápido
+                  example: "PED123456"
+                numero_pedido_pai:
+                  type: string
+                  description: Número do Pedido Pai de um frete contratado na Frete Rápido
+                  example: "PEDP123456"
+                chave_acesso:
+                  type: string
+                  description: >
+                    Chave de acesso da nota fiscal (obrigatório se não informado número da nota fiscal)
+                  example: "12345678901234567890123456789012345678901234"
+                numero:
+                  type: string
+                  description: Número da nota fiscal (sem zero à esquerda)
+                  example: "1234"
+                serie:
+                  type: string
+                  description: Série da nota fiscal (sem zero à esquerda)
+                  example: "1"
+      responses:
+        "200":
+          description: Comprovante registrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nome_arquivo:
+                    type: string
+                    example: "Frete Rápido"
+                  link:
+                    type: string
+                    example: "https://freterapido.com/wp-content/uploads/2019/11/clock-inteligencia-logistica.png"
+                  comprovante_entrega:
+                    type: integer
+                    example: 1
+                  data:
+                    type: string
+                    format: date-time
+                    example: "2021-11-17 14:08:08"
+                  id_cotacao:
+                    type: integer
+                    example: 2230111
+                  id_anexo:
+                    type: integer
+                    example: 634
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /quotes/{id_frete}/attachment:
+    post:
+      summary: Comprovantes de Entrega por ID do Frete
+      description: >
+        Método que permite receber os comprovantes de entrega por ID do Frete.
+
+        Para registrar um novo anexo, envie os dados abaixo. O link do arquivo deve estar disponível via HTTPS nos formatos JPG, PNG ou PDF.
+      operationId: receberComprovanteEntregaPorIdFrete
+      tags:
+        - Comprovante de Entrega
+      parameters:
+        - name: id_frete
+          in: path
+          required: true
+          description: Identificador do frete contratado na Frete Rápido (13 caracteres)
+          schema:
+            type: string
+            example: "FR12345678901"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome_arquivo
+                - link
+              properties:
+                nome_arquivo:
+                  type: string
+                  description: Nome do arquivo
+                  example: "Frete Rápido"
+                link:
+                  type: string
+                  format: uri
+                  description: >
+                    URL com o link do arquivo a anexar.  
+                    Deve estar em HTTPS e ser do tipo JPG, PNG ou PDF.
+                  example: "https://freterapido.com/wp-content/uploads/2019/11/clock-inteligencia-logistica.png"
+                comprovante_entrega:
+                  type: integer
+                  enum: [0, 1]
+                  description: >
+                    Define se o anexo é um comprovante de entrega.  
+                    1 = Sim, 0 = Não
+                  example: 1
+      responses:
+        "200":
+          description: Comprovante registrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nome_arquivo:
+                    type: string
+                    example: "Frete Rápido"
+                  link:
+                    type: string
+                    example: "https://freterapido.com/wp-content/uploads/2019/11/clock-inteligencia-logistica.png"
+                  comprovante_entrega:
+                    type: integer
+                    example: 1
+                  data:
+                    type: string
+                    format: date-time
+                    example: "2021-11-17 14:08:08"
+                  id_cotacao:
+                    type: integer
+                    example: 2230111
+                  id_anexo:
+                    type: integer
+                    example: 634
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /exemplo/webhook_nfe:
+    post:
+      summary: Webhook de NF-e
+      description: >
+        Webhook que a transportadora deve expor para receber notificações sempre que o Embarcador **incluir** ou **excluir** uma nota fiscal (NF-e) na plataforma da Frete Rápido.
+      operationId: receberWebhookNFe
+      tags:
+        - Webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - acao
+                - id_frete
+                - nfe
+              properties:
+                acao:
+                  type: integer
+                  enum: [1, 2]
+                  description: >
+                    Ação realizada pelo Embarcador:  
+                    1 = Inclusão  
+                    2 = Exclusão
+                  example: 1
+                id_frete:
+                  type: string
+                  description: Identificador do frete (13 caracteres)
+                  example: "FR12345678901"
+                nfe:
+                  type: object
+                  required:
+                    - chave_acesso
+                    - serie
+                    - numero
+                    - valor
+                    - valor_itens
+                    - data_emissao
+                    - tipo_operacao
+                    - tipo_emissao
+                  properties:
+                    chave_acesso:
+                      type: string
+                      description: Chave de acesso da NF-e
+                      example: "35230412345678000123550010000000011000000010"
+                    serie:
+                      type: string
+                      example: "1"
+                    numero:
+                      type: string
+                      example: "123"
+                    quantidade_volumes:
+                      type: string
+                      example: "5"
+                    valor:
+                      type: number
+                      format: float
+                      example: 1500.00
+                    valor_total:
+                      type: number
+                      format: float
+                      example: 1600.00
+                    valor_itens:
+                      type: number
+                      format: float
+                      example: 1500.00
+                    data_emissao:
+                      type: string
+                      format: date-time
+                      example: "2024-05-23 13:45:00"
+                    tipo_operacao:
+                      type: integer
+                      enum: [0, 1]
+                      description: >
+                        Tipo de operação da NF:  
+                        0 = Entrada  
+                        1 = Saída
+                      example: 1
+                    tipo_emissao:
+                      type: integer
+                      enum: [1, 2, 3, 4, 5]
+                      description: >
+                        Tipo de emissão da NF:  
+                        1 = Normal  
+                        2 = Contingência FS  
+                        3 = SCAN  
+                        4 = DPEC  
+                        5 = FS-DA
+                      example: 1
+                numero_pedido:
+                  type: string
+                  description: Número do pedido (opcional)
+                  example: "PED12345"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /exemplo/webhook_cancelamento:
+    post:
+      summary: Webhook de Cancelamento de Frete
+      description: >
+        Webhook que a transportadora deve expor para receber notificações sempre que um frete for **cancelado** na plataforma Frete Rápido.
+      operationId: receberWebhookCancelamento
+      tags:
+        - Webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id_frete
+                - remetente
+              properties:
+                id_frete:
+                  type: string
+                  description: Identificador único do frete (13 caracteres)
+                  example: "FR12345678901"
+                numero_pedido:
+                  type: string
+                  description: Número do pedido na loja
+                  example: "PED123456"
+                remetente:
+                  type: object
+                  required:
+                    - cnpj
+                  properties:
+                    cnpj:
+                      type: string
+                      description: CNPJ do remetente (sem formatação)
+                      example: "12345678000195"
+                nfe:
+                  type: array
+                  description: Lista de notas fiscais associadas ao frete cancelado
+                  items:
+                    type: object
+                    properties:
+                      numero:
+                        type: string
+                        example: "12345"
+                      serie:
+                        type: string
+                        example: "1"
+                      chave:
+                        type: string
+                        example: "35230412345678000123550010000000011000000010"
+                      valor:
+                        type: number
+                        format: float
+                        example: 1500.00
+                      valor_itens:
+                        type: number
+                        format: float
+                        example: 1450.00
+                      data_emissao:
+                        type: string
+                        format: date-time
+                        example: "2024-05-20 14:00:00"
+                      quantidade_volumes:
+                        type: string
+                        example: "5"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /exemplo/webhook_metadados:
+    post:
+      summary: Webhook de Metadados
+      description: >
+        Webhook que a transportadora deve expor para receber os **metadados** sempre que um embarcador os associar a um frete na plataforma Frete Rápido.
+        Os metadados representam informações adicionais da contratação e são enviados em lotes.
+      operationId: receberWebhookMetadados
+      tags:
+        - Webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - metadata
+              properties:
+                freight_id:
+                  type: string
+                  description: Identificador do frete contratado na Frete Rápido (13 caracteres)
+                  example: "FR12345678901"
+                order_number:
+                  type: string
+                  description: Número do pedido na Frete Rápido
+                  example: "PED123456"
+                invoices:
+                  type: array
+                  description: Lista de notas fiscais vinculadas ao frete
+                  items:
+                    type: object
+                    properties:
+                      number:
+                        type: string
+                        example: "12345"
+                      serie:
+                        type: string
+                        example: "1"
+                      key:
+                        type: string
+                        example: "35230412345678000123550010000000011000000010"
+                metadata:
+                  type: array
+                  description: Lista de metadados com chave e valor
+                  items:
+                    type: object
+                    required:
+                      - key
+                      - value
+                    properties:
+                      key:
+                        type: string
+                        maxLength: 255
+                        description: Nome único do atributo
+                        example: "tipo_entrega"
+                      value:
+                        type: string
+                        maxLength: 255
+                        description: Valor associado à chave informada
+                        example: "expressa"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  responses:
+    Success:
+      description: Requisição processada com sucesso
+    Unauthorized:
+      description: Não autorizado (Token inválido)
+    Forbidden:
+      description: Acesso não permitido
+    NotFound:
+      description: Informação não localizada
+    Conflict:
+      description: Conflito (Status fora do fluxo permitido)
+    UnprocessableEntity:
+      description: Erro de sintaxe da requisição
+    InternalServerError:
+      description: Erro do servidor
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - BearerAuth: []
+x-original-swagger-version: "2.0"

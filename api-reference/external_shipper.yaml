@@ -1,0 +1,4804 @@
+openapi: 3.0.1
+
+info:
+  title: APIs Frete Rápido - Embarcador
+  version: 1.0.0
+  description: >
+    API oficial da Frete Rápido para integração com e-commerces e ERPs.
+  contact:
+    name: Frete Rápido
+    url: https://freterapido.com.br
+servers:
+  - url: https://api.freterapido.com
+    description: Servidor de Produção
+  - url: https://api.homolog-freterapido.com
+    description: Servidor de Homologação
+x-logo:
+  url: https://freterapido.com.br/wp-content/uploads/2023/11/logo-teste-2-768x168.png
+  altText: Logo Frete Rápido
+  
+paths:
+  /external/shipper/v1/check-status:
+    post:
+      summary: Informações da Empresa
+      description: >
+        Permite verificar se as credenciais (CNPJ e código da plataforma) são válidas junto à API da Frete Rápido.
+      operationId: verificarCredenciais
+      tags:
+        - Verificação de Credenciais
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cnpj
+                - codigo_plataforma
+              properties:
+                cnpj:
+                  type: string
+                  description: CNPJ cadastrado na Frete Rápido (sem formatação)
+                  example: "12345678000199"
+                codigo_plataforma:
+                  type: string
+                  description: Código único da sua plataforma (solicite à Frete Rápido)
+                  example: "meucodigo01"
+      responses:
+        '200':
+          description: Requisição bem-sucedida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bloqueio:
+                    type: boolean
+                    description: True se o acesso estiver bloqueado
+                    example: true
+                  saldo:
+                    type: integer
+                    description: Quantidade de envios disponíveis
+                    example: 0
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  
+  /external/shipper/v1/shipping-options:
+    get:
+      summary: Informações da Empresa 
+      description: >
+        Permite consultar todas as opções de entrega disponíveis para um embarcador na Frete Rápido.
+      tags:
+        - Opções / Métodos de Entrega
+      responses:
+        '200':
+          description: Lista de transportadoras com suas opções de entrega disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                    razao_social:
+                      type: string
+                      example: "Transportadora XYZ Ltda"
+                    nome_fantasia:
+                      type: string
+                      example: "TransXYZ"
+                    inscricao_estadual:
+                      type: string
+                      example: "123456789"
+                    registro_antt:
+                      type: string
+                      example: "ANTT123456"
+                    opcoes_entrega:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          hash:
+                            type: string
+                            example: "hash123abc"
+                          cnpj_ponto_coleta:
+                            type: string
+                            example: "98765432000100"
+                          versao:
+                            type: string
+                            example: "v1.2"
+                          tipo:
+                            type: integer
+                            enum: [1, 2]
+                            description: 1 = Fracionada; 2 = Lotação
+                          tipo_destinatario:
+                            type: integer
+                            enum: [1, 2, 3]
+                            description: 1 = Pessoa Física; 2 = Pessoa Jurídica; 3 = Ambos
+                          validade_oferta:
+                            type: integer
+                            example: 30
+                          validade:
+                            type: string
+                            format: date-time
+                            example: "2025-12-31 23:59:59"
+                          pais:
+                            type: string
+                            example: "Brasil"
+                          servico:
+                            type: string
+                            example: "Entrega Expressa"
+                          codigo_servico:
+                            type: string
+                            nullable: true
+                            example: "EXP123"
+                          cep_origem:
+                            type: string
+                            example: "01001000"
+                          reversa:
+                            type: boolean
+                            example: false
+                          observacao:
+                            type: string
+                            example: "Disponível apenas em dias úteis"
+                          tipos_carga:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                codigo:
+                                  type: integer
+                                  example: 1
+                                tipo_carga:
+                                  type: string
+                                  example: "Carga Seca"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /quote/v3/simulate:
+    post:
+      summary: Cotações de Frete
+      description: >
+        Realiza cotações de frete com múltiplas origens (expedidores) utilizando o motor de cotação v3 da Frete Rápido.
+      tags:
+        - Cotações de Frete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shipper:
+                  type: object
+                  required: [registered_number, platform_code]
+                  properties:
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                    platform_code:
+                      type: string
+                      example: "plataforma_exemplo"
+                recipient:
+                  type: object
+                  required: [type, country, zipcode]
+                  properties:
+                    type:
+                      type: integer
+                      enum: [0, 1]
+                      description: 0 = Pessoa Física; 1 = Pessoa Jurídica
+                    registered_number:
+                      type: string
+                      example: "98765432100"
+                    state_inscription:
+                      type: string
+                      example: "ISENTO"
+                    country:
+                      type: string
+                      example: "BRA"
+                    zipcode:
+                      type: integer
+                      example: 12345678
+                dispatchers:
+                  type: array
+                  items:
+                    type: object
+                    required: [registered_number, zipcode, volumes]
+                    properties:
+                      registered_number:
+                        type: string
+                        example: "12345678000199"
+                      zipcode:
+                        type: integer
+                        example: 87654321
+                      total_price:
+                        type: number
+                        format: float
+                        example: 199.90
+                      volumes:
+                        type: array
+                        items:
+                          type: object
+                          required: [amount, category, height, width, length, unitary_price, unitary_weight]
+                          properties:
+                            amount:
+                              type: integer
+                              example: 2
+                            category:
+                              type: string
+                              example: "eletronico"
+                            sku:
+                              type: string
+                              example: "SKU123"
+                            tag:
+                              type: string
+                              example: "PROMO2025"
+                            description:
+                              type: string
+                              example: "Notebook 15 polegadas"
+                            height:
+                              type: number
+                              format: float
+                              example: 0.1
+                            width:
+                              type: number
+                              format: float
+                              example: 0.3
+                            length:
+                              type: number
+                              format: float
+                              example: 0.4
+                            unitary_price:
+                              type: number
+                              format: float
+                              example: 1500.0
+                            unitary_weight:
+                              type: number
+                              format: float
+                              example: 2.5
+                            consolidate:
+                              type: boolean
+                              example: false
+                            overlaid:
+                              type: boolean
+                              example: false
+                            rotate:
+                              type: boolean
+                              example: false
+                            amount_volumes:
+                              type: integer
+                              example: 1
+                channel:
+                  type: string
+                  example: "ecommerce"
+                filter:
+                  type: integer
+                  enum: [1, 2, 3]
+                limit:
+                  type: integer
+                  example: 10
+                identification:
+                  type: string
+                  example: "pedido-1234"
+                reverse:
+                  type: boolean
+                  example: false
+                simulation_type:
+                  type: array
+                  items:
+                    type: integer
+                    enum: [0, 1]
+                  example: [0]
+                returns:
+                  type: object
+                  properties:
+                    composition:
+                      type: boolean
+                      example: true
+                    volumes:
+                      type: boolean
+                      example: true
+                    applied_rules:
+                      type: boolean
+                      example: false
+      responses:
+        '200':
+          description: Resposta com as ofertas disponíveis por expedidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dispatchers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        request_id:
+                          type: string
+                        registered_number_shipper:
+                          type: string
+                        registered_number_dispatcher:
+                          type: string
+                        zipcode_origin:
+                          type: integer
+                        offers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              offer:
+                                type: integer
+                              simulation_type:
+                                type: integer
+                              carrier:
+                                type: object
+                                properties:
+                                  reference:
+                                    type: integer
+                                  name:
+                                    type: string
+                                  registered_number:
+                                    type: string
+                                  state_inscription:
+                                    type: string
+                                  logo:
+                                    type: string
+                              service:
+                                type: string
+                              final_price:
+                                type: number
+                                format: float
+                              cost_price:
+                                type: number
+                                format: float
+                              delivery_time:
+                                type: object
+                                properties:
+                                  days:
+                                    type: integer
+                                  estimated_date:
+                                    type: string
+                                    format: date
+                              expiration:
+                                type: string
+                                format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/multiorigin/quote:
+    post:
+      summary: Cotação de Frete Avançada
+      description: >
+        Realiza cotações de frete com múltiplas origens, verificando o melhor centro de expedição de acordo com as regras escolhidas e estoque disponível.
+      tags:
+        - Cotação de Frete Avançada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shipper:
+                  type: object
+                  required: [registered_number, platform_code]
+                  properties:
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                    platform_code:
+                      type: string
+                      example: "plataforma_exemplo"
+                recipient:
+                  type: object
+                  required: [type, country, zipcode]
+                  properties:
+                    type:
+                      type: integer
+                      enum: [0, 1]
+                      description: 0 = Pessoa Física; 1 = Pessoa Jurídica
+                    registered_number:
+                      type: string
+                      example: "98765432100"
+                    state_inscription:
+                      type: string
+                      example: "ISENTO"
+                    country:
+                      type: string
+                      example: "BRA"
+                    zipcode:
+                      type: integer
+                      example: 12345678
+                dispatchers:
+                  type: array
+                  items:
+                    type: object
+                    required: [registered_number, zipcode, volumes]
+                    properties:
+                      registered_number:
+                        type: string
+                        example: "12345678000199"
+                      zipcode:
+                        type: integer
+                        example: 87654321
+                      total_price:
+                        type: number
+                        format: float
+                        example: 199.90
+                      volumes:
+                        type: array
+                        items:
+                          type: object
+                          required: [amount, category, height, width, length, unitary_price, unitary_weight]
+                          properties:
+                            amount:
+                              type: integer
+                              example: 2
+                            category:
+                              type: string
+                              example: "eletronico"
+                            sku:
+                              type: string
+                              example: "SKU123"
+                            tag:
+                              type: string
+                              example: "PROMO2025"
+                            description:
+                              type: string
+                              example: "Notebook 15 polegadas"
+                            height:
+                              type: number
+                              format: float
+                              example: 0.1
+                            width:
+                              type: number
+                              format: float
+                              example: 0.3
+                            length:
+                              type: number
+                              format: float
+                              example: 0.4
+                            unitary_price:
+                              type: number
+                              format: float
+                              example: 1500.0
+                            unitary_weight:
+                              type: number
+                              format: float
+                              example: 2.5
+                            consolidate:
+                              type: boolean
+                              example: false
+                            overlaid:
+                              type: boolean
+                              example: false
+                            rotate:
+                              type: boolean
+                              example: false
+                            amount_volumes:
+                              type: integer
+                              example: 1
+                channel:
+                  type: string
+                  example: "ecommerce"
+                filter:
+                  type: integer
+                  enum: [1, 2, 3]
+                limit:
+                  type: integer
+                  example: 10
+                identification:
+                  type: string
+                  example: "pedido-1234"
+                reverse:
+                  type: boolean
+                  example: false
+                simulation_type:
+                  type: array
+                  items:
+                    type: integer
+                    enum: [0, 1]
+                  example: [0]
+                returns:
+                  type: object
+                  properties:
+                    composition:
+                      type: boolean
+                      example: true
+                    volumes:
+                      type: boolean
+                      example: true
+                    applied_rules:
+                      type: boolean
+                      example: false
+      responses:
+        '200':
+          description: Resposta com as ofertas disponíveis por expedidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dispatchers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        request_id:
+                          type: string
+                        registered_number_shipper:
+                          type: string
+                        registered_number_dispatcher:
+                          type: string
+                        zipcode_origin:
+                          type: integer
+                        offers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              offer:
+                                type: integer
+                              simulation_type:
+                                type: integer
+                              carrier:
+                                type: object
+                                properties:
+                                  reference:
+                                    type: integer
+                                  name:
+                                    type: string
+                                  registered_number:
+                                    type: string
+                                  state_inscription:
+                                    type: string
+                                  logo:
+                                    type: string
+                              service:
+                                type: string
+                              final_price:
+                                type: number
+                                format: float
+                              cost_price:
+                                type: number
+                                format: float
+                              delivery_time:
+                                type: object
+                                properties:
+                                  days:
+                                    type: integer
+                                  estimated_date:
+                                    type: string
+                                    format: date
+                              expiration:
+                                type: string
+                                format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quote/ecommerce/{token_oferta}/offer/{oferta}:
+    post:
+      summary: Contratação de Frete
+      description: >
+        Realiza a contratação de frete com base em uma simulação anterior realizada via API de cotação.
+        Os dados do remetente, destinatário e (opcionalmente) do expedidor devem ser fornecidos.
+        O envio da nota fiscal é opcional, mas necessário para rastreamento com a transportadora.
+      tags:
+        - Contratação de Frete
+      parameters:
+        - name: token_oferta
+          in: path
+          required: true
+          description: Token identificador da simulação de frete.
+          schema:
+            type: string
+            example: "5fd26cfe2d5b8a0024dd79c9"
+        - name: oferta
+          in: path
+          required: true
+          description: Identificador da oferta escolhida na cotação.
+          schema:
+            type: integer
+            example: 123456
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remetente:
+                  type: object
+                  required: [cnpj]
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                expedidor:
+                  type: object
+                  properties:
+                    cnpj:
+                      type: string
+                      example: "12345678000199"
+                    razao_social:
+                      type: string
+                      example: "Filial SP Ltda"
+                    inscricao_estadual:
+                      type: string
+                      example: "110042490114"
+                    endereco:
+                      type: object
+                      properties:
+                        cep:
+                          type: string
+                          example: "04534011"
+                        rua:
+                          type: string
+                          example: "Av. Brigadeiro Faria Lima"
+                        numero:
+                          type: string
+                          example: "1000"
+                        bairro:
+                          type: string
+                          example: "Itaim Bibi"
+                        complemento:
+                          type: string
+                          example: "10º andar"
+                destinatario:
+                  type: object
+                  required: [cnpj_cpf, nome, endereco]
+                  properties:
+                    cnpj_cpf:
+                      type: string
+                      example: "98765432100"
+                    inscricao_estadual:
+                      type: string
+                      example: "ISENTO"
+                    nome:
+                      type: string
+                      example: "Cliente Exemplo"
+                    email:
+                      type: string
+                      example: "cliente@exemplo.com.br"
+                    telefone:
+                      type: string
+                      example: "11999999999"
+                    endereco:
+                      type: object
+                      required: [cep, rua, numero, bairro]
+                      properties:
+                        cep:
+                          type: string
+                          example: "30130010"
+                        rua:
+                          type: string
+                          example: "Rua da Bahia"
+                        numero:
+                          type: string
+                          example: "2000"
+                        bairro:
+                          type: string
+                          example: "Funcionários"
+                        complemento:
+                          type: string
+                          example: "Apto 202"
+                        cidade:
+                          type: string
+                          example: "Belo Horizonte"
+                        estado:
+                          type: string
+                          example: "MG"
+                metadados:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      chave:
+                        type: string
+                        example: "pedido_loja"
+                      valor:
+                        type: string
+                        example: "LOJA-123"
+                numero_pedido:
+                  type: string
+                  example: "123456"
+                data_pedido:
+                  type: string
+                  format: date-time
+                  example: "2025-05-23 14:00:00"
+                data_faturamento:
+                  type: string
+                  format: date-time
+                  example: "2025-05-24 08:30:00"
+                prazo_entrega_consumidor:
+                  type: string
+                  format: date-time
+                  example: "2025-05-30 23:59:59"
+                forma_pagamento:
+                  type: string
+                  example: "cartao_credito"
+                obs_cliente:
+                  type: string
+                  example: "Entregar no horário comercial"
+                valor_frete_cobrado:
+                  type: number
+                  format: float
+                  example: 29.90
+                nota_fiscal:
+                  type: array
+                  items:
+                    type: object
+                    required: [numero, serie, cfop, quantidade_volumes, chave_acesso, valor, valor_itens, data_emissao, tipo_operacao, tipo_emissao, protocolo_autorizacao]
+                    properties:
+                      numero:
+                        type: string
+                        example: "1000"
+                      serie:
+                        type: string
+                        example: "1"
+                      cfop:
+                        type: string
+                        example: "5102"
+                      quantidade_volumes:
+                        type: string
+                        example: "1"
+                      chave_acesso:
+                        type: string
+                        example: "35210412345678000123550010000010011000010012"
+                      valor:
+                        type: number
+                        format: float
+                        example: 150.0
+                      valor_itens:
+                        type: number
+                        format: float
+                        example: 150.0
+                      data_emissao:
+                        type: string
+                        format: date-time
+                        example: "2025-05-24 08:00:00"
+                      tipo_operacao:
+                        type: integer
+                        enum: [0, 1]
+                        example: 1
+                      tipo_emissao:
+                        type: integer
+                        enum: [1, 2, 3, 4, 5]
+                        example: 1
+                      protocolo_autorizacao:
+                        type: string
+                        example: "135200000000000"
+                data_coleta:
+                  type: string
+                  format: date
+                  example: "2025-05-25"
+                canal:
+                  type: string
+                  example: "ecommerce"
+                subcanal:
+                  type: string
+                  example: "app"
+      responses:
+        '200':
+          description: Sucesso na contratação do frete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id_frete:
+                    type: string
+                    example: "FR2112026BGG1"
+                  rastreio:
+                    type: string
+                    example: "https://ondeestameupedido.com.br/FR2112026BGG1"
+                  data_contratacao:
+                    type: string
+                    format: date-time
+                    example: "2021-12-02 15:26:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  
+  /external/shipper/v1/order-import:
+    post:
+      summary: Contratação de Frete 
+      description: >
+        Importa os dados de um pedido, realiza a cotação e contratação do frete automaticamente.
+        A regra de contratação deve ser informada via campo `type_hiring`. O envio da nota fiscal é opcional, mas necessário para rastreio.
+      tags:
+        - Importação de Pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shipper:
+                  type: object
+                  required: [registered_number, platform_code]
+                  properties:
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                    platform_code:
+                      type: string
+                      example: "plataforma_xpto"
+                recipient:
+                  type: object
+                  required: [type, registered_number, name, address]
+                  properties:
+                    type:
+                      type: integer
+                      enum: [0, 1]
+                      description: 0 = Pessoa Física, 1 = Pessoa Jurídica
+                    registered_number:
+                      type: string
+                      example: "98765432100"
+                    state_inscription:
+                      type: string
+                      example: "ISENTO"
+                    name:
+                      type: string
+                      example: "João da Silva"
+                    email:
+                      type: string
+                      example: "cliente@email.com"
+                    phone:
+                      type: string
+                      example: "11999999999"
+                    address:
+                      type: object
+                      required: [zipcode, street, number, neighborhood, country]
+                      properties:
+                        zipcode:
+                          type: string
+                          example: "30130010"
+                        street:
+                          type: string
+                          example: "Rua A"
+                        number:
+                          type: string
+                          example: "123"
+                        neighborhood:
+                          type: string
+                          example: "Centro"
+                        complement:
+                          type: string
+                          example: "Apto 101"
+                        country:
+                          type: string
+                          example: "BRA"
+                        city:
+                          type: string
+                          example: "Belo Horizonte"
+                        state:
+                          type: string
+                          example: "MG"
+                dispatcher:
+                  type: object
+                  required: [registered_number, name, state_inscription, address]
+                  properties:
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                    state_inscription:
+                      type: string
+                      example: "110042490114"
+                    name:
+                      type: string
+                      example: "Filial SP Ltda"
+                    address:
+                      type: object
+                      required: [zipcode, street, number, neighborhood]
+                      properties:
+                        zipcode:
+                          type: string
+                          example: "04534011"
+                        street:
+                          type: string
+                          example: "Av. Faria Lima"
+                        number:
+                          type: string
+                          example: "1000"
+                        neighborhood:
+                          type: string
+                          example: "Itaim Bibi"
+                        complement:
+                          type: string
+                          example: "10º andar"
+                volumes:
+                  type: array
+                  items:
+                    type: object
+                    required: [amount, category, height, width, length, unitary_price, unitary_weight]
+                    properties:
+                      amount:
+                        type: integer
+                        example: 1
+                      category:
+                        type: string
+                        example: "eletronico"
+                      sku:
+                        type: string
+                        example: "SKU123"
+                      tag:
+                        type: string
+                        example: "PROMO2025"
+                      description:
+                        type: string
+                        example: "Notebook 15 polegadas"
+                      height:
+                        type: number
+                        format: float
+                        example: 0.1
+                      width:
+                        type: number
+                        format: float
+                        example: 0.3
+                      length:
+                        type: number
+                        format: float
+                        example: 0.4
+                      unitary_price:
+                        type: number
+                        format: float
+                        example: 1500.0
+                      unitary_weight:
+                        type: number
+                        format: float
+                        example: 2.5
+                      consolidate:
+                        type: boolean
+                        example: false
+                      overlaid:
+                        type: boolean
+                        example: false
+                      rotate:
+                        type: boolean
+                        example: false
+                      amount_volumes:
+                        type: integer
+                        example: 1
+                metadata:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        example: "pedido_loja"
+                      value:
+                        type: string
+                        example: "12345"
+                carrier:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: "Transportadora XPTO"
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                    service:
+                      type: string
+                      example: "EXPRESSA"
+                    service_description:
+                      type: string
+                      example: "Entrega expressa"
+                not_quote:
+                  type: boolean
+                  example: false
+                delivery_time:
+                  type: integer
+                  example: 5
+                original_delivery_time:
+                  type: integer
+                  example: 7
+                type_hiring:
+                  type: integer
+                  enum: [1, 2, 3]
+                  example: 1
+                  description: 1 = menor preço, 2 = menor prazo, 3 = mesma transportadora
+                total_price:
+                  type: number
+                  format: float
+                  example: 199.90
+                channel:
+                  type: string
+                  example: "ecommerce"
+                subchannel:
+                  type: string
+                  example: "mobile"
+                identification:
+                  type: string
+                  example: "pedido-xyz"
+                order_number:
+                  type: string
+                  example: "123456"
+                parent_order_number:
+                  type: string
+                  example: "123"
+                order_date:
+                  type: string
+                  format: date-time
+                  example: "2025-05-23 14:00:00"
+                invoiced_date:
+                  type: string
+                  format: date-time
+                  example: "2025-05-24 08:30:00"
+                collection_date:
+                  type: string
+                  format: date
+                  example: "2025-05-25"
+                delivery_date:
+                  type: string
+                  format: date-time
+                  example: "2025-05-30 23:59:59"
+                payment_type:
+                  type: string
+                  example: "boleto"
+                notes:
+                  type: string
+                  example: "Entregar no horário comercial"
+                freight_value:
+                  type: number
+                  format: float
+                  example: 29.90
+                invoice:
+                  type: array
+                  items:
+                    type: object
+                    required: [number, serie, key, amount_volumes, total_value, items_value, issue_date]
+                    properties:
+                      number:
+                        type: string
+                        example: "1000"
+                      serie:
+                        type: string
+                        example: "1"
+                      key:
+                        type: string
+                        example: "35210412345678000123550010000010011000010012"
+                      amount_volumes:
+                        type: string
+                        example: "1"
+                      total_value:
+                        type: number
+                        format: float
+                        example: 150.0
+                      items_value:
+                        type: number
+                        format: float
+                        example: 150.0
+                      issue_date:
+                        type: string
+                        format: date-time
+                        example: "2025-05-24 08:00:00"
+      responses:
+        '200':
+          description: Pedido importado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  freight_id:
+                    type: string
+                    example: "FR211104KGVOR"
+                  tracking_url:
+                    type: string
+                    example: "https://ondeestameupedido.com.br/FR211104KGVOR"
+                  hired_date:
+                    type: string
+                    format: date-time
+                    example: "2025-05-24 15:26:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/{freight_id}/offers:
+    get:
+      summary: Listagens de Frete
+      description: >
+        Consulta as ofertas de frete disponíveis para o ID do frete informado.
+      tags:
+        - Consultar ofertas do frete
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          description: ID do frete a ser consultado
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+      responses:
+        '200':
+          description: Lista de ofertas do frete
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    offer:
+                      type: integer
+                      example: 1
+                      description: Posição da oferta
+                    registered_number:
+                      type: string
+                      example: "12345678000199"
+                      description: CNPJ da transportadora
+                    name:
+                      type: string
+                      example: "Transportadora XPTO"
+                      description: Nome da transportadora
+                    service:
+                      type: string
+                      example: "EXPRESSA"
+                      description: Serviço retornado
+                    service_description:
+                      type: string
+                      nullable: true
+                      example: "Entrega expressa no próximo dia útil"
+                      description: Descrição do serviço retornado
+                    delivery_time:
+                      type: integer
+                      example: 3
+                      description: Prazo estimado para entrega (dias)
+                    estimated_date:
+                      type: string
+                      format: date
+                      example: "2025-05-27"
+                      description: Data de entrega estimada
+                    expiration:
+                      type: string
+                      format: date
+                      example: "2025-05-25"
+                      description: Data de expiração da oferta
+                    cost_price:
+                      type: number
+                      format: float
+                      example: 50.00
+                      description: Preço de custo do frete
+                    final_price:
+                      type: number
+                      format: float
+                      example: 55.00
+                      description: Preço final do frete (com regras aplicadas)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+          
+  /external/shipper/v1/quotes/{freight_id}/offer:
+    patch:
+      summary: Edição de Frete 
+      description: >
+        Permite trocar a oferta de um determinado frete informando a posição da nova oferta.
+      tags:
+        - Trocar oferta de um frete
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          description: ID do frete a ser consultado
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+        - name: offer
+          in: query
+          required: true
+          description: Posição da oferta a ser contratada
+          schema:
+            type: integer
+            example: 2
+      responses:
+        '200':
+          description: Status da alteração da oferta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  change:
+                    type: boolean
+                    example: true
+                    description: Indica se a alteração da oferta foi realizada com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/{freight_id}/update-carrier:
+    patch:
+      summary: Edição de Frete  
+      description: Permite alterar a transportadora de um pedido importado sem recotar o frete.
+      tags:
+        - Alterar transportadora de pedido importado sem cotação
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          description: ID do frete a ser consultado
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+      requestBody:
+        description: Dados da nova transportadora, prazo de entrega e preço total do pedido
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - carrier
+                - delivery_time
+                - total_price
+              properties:
+                carrier:
+                  type: object
+                  required:
+                    - service
+                  properties:
+                    name:
+                      type: string
+                      description: >
+                        Nome da transportadora, obrigatório se registered_number não for informado.
+                      example: "Transportadora Exemplo"
+                    registered_number:
+                      type: string
+                      description: >
+                        CNPJ da transportadora, obrigatório se name não for informado.
+                      example: "00000000000000"
+                    service:
+                      type: string
+                      description: Serviço utilizado na comparação para contratação.
+                      example: "Serviço de entrega expressa"
+                delivery_time:
+                  type: integer
+                  description: Prazo de entrega em dias
+                  example: 5
+                total_price:
+                  type: number
+                  format: float
+                  description: Preço total do pedido
+                  example: 150.75
+      responses:
+        '204':
+          description: Alteração realizada com sucesso.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/{freight_id}/update-email-recipient:
+    patch:
+      summary: Edição de Frete   
+      description: Método para incluir ou atualizar o e-mail do destinatário do frete.
+      tags:
+        - Alterar e-mail do destinatário do frete
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          description: ID do frete a ser consultado
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+      requestBody:
+        description: Objeto contendo o novo e-mail do destinatário
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - recipient
+              properties:
+                recipient:
+                  type: object
+                  required:
+                    - email
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                      description: Endereço de e-mail do destinatário
+                      example: "email@email.com"
+      responses:
+        '204':
+          description: E-mail alterado com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/{freight_id}/invoices:
+    post:
+      summary: Contratação de Frete 
+      description: >
+        Este método permite informar os dados de nota fiscal do pedido que originou o frete,
+        indispensáveis para rastreamento junto às transportadoras.
+      tags:
+        - Envio dos dados da Nota Fiscal do pedido
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          description: Identificador do frete contratado na Frete Rápido
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nota_fiscal
+              properties:
+                nota_fiscal:
+                  type: array
+                  description: Lista de notas fiscais relacionadas ao frete
+                  items:
+                    type: object
+                    required:
+                      - numero
+                      - serie
+                      - cfop
+                      - chave_acesso
+                      - quantidade_volumes
+                      - valor
+                      - valor_itens
+                      - data_emissao
+                      - tipo_operacao
+                      - tipo_emissao
+                      - protocolo_autorizacao
+                    properties:
+                      numero:
+                        type: string
+                        description: Número da Nota Fiscal
+                        example: "123456"
+                      serie:
+                        type: string
+                        description: Série da Nota Fiscal
+                        example: "1"
+                      cfop:
+                        type: string
+                        description: CFOP predominante da Nota Fiscal
+                        example: "5102"
+                      chave_acesso:
+                        type: string
+                        description: Chave da Nota Fiscal
+                        example: "35180212345678901234550010000000011000000000"
+                      quantidade_volumes:
+                        type: integer
+                        description: Quantidade de volumes da Nota Fiscal
+                        example: 1
+                      valor:
+                        type: number
+                        format: float
+                        description: Valor total da Nota Fiscal
+                        example: 1500.75
+                      valor_itens:
+                        type: number
+                        format: float
+                        description: Valor total dos itens da Nota Fiscal
+                        example: 1450.00
+                      data_emissao:
+                        type: string
+                        format: date-time
+                        description: Data de emissão da Nota Fiscal (YYYY-MM-DD HH:mm:ss)
+                        example: "2019-02-15 13:40:00"
+                      tipo_operacao:
+                        type: integer
+                        description: Tipo de operação da Nota Fiscal (0 = Entrada, 1 = Saída)
+                        enum: [0, 1]
+                        example: 1
+                      tipo_emissao:
+                        type: integer
+                        description: Tipo de emissão da Nota Fiscal
+                        enum: [1, 2, 3, 4, 5]
+                        example: 1
+                      protocolo_autorizacao:
+                        type: string
+                        description: Protocolo de autorização da Nota Fiscal
+                        example: "123456789012345"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/invoices:
+    delete:
+      summary: Edição de Frete
+      description: >
+        Método responsável por deletar uma nota fiscal cadastrada na Frete Rápido.
+      tags:
+        -  Deletar uma nota fiscal cadastrada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id_frete
+                - chave_nf
+              properties:
+                id_frete:
+                  type: string
+                  description: Identificador do frete contratado na Frete Rápido
+                  example: "FR211104KGVOR"
+                chave_nf:
+                  type: string
+                  description: Chave da Nota Fiscal a ser deletada
+                  example: "35180212345678901234550010000000011000000000"
+      responses:
+        '200':
+          description: Nota fiscal deletada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id_frete:
+                    type: string
+                    description: Identificador do frete
+                    example: "FR211104KGVOR"
+                  chave_acesso:
+                    type: string
+                    description: Chave da Nota Fiscal deletada
+                    example: "35180212345678901234550010000000011000000000"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/{identificador}/occurrences:
+    get:
+      summary: Listagens de Frete 
+      description: >
+        Permite consultar todas as ocorrências de rastreio de um frete, apresentadas por ordem de acontecimento.
+        Pode-se informar o identificador do frete ou o número do pedido.
+      tags:
+        - Consultar ocorrências de rastreio de um frete
+      parameters:
+        - name: identificador
+          in: path
+          description: Identificador do frete contratado ou número do pedido
+          required: true
+          schema:
+            type: string
+            example: "FR211104KGVOR"
+        - name: codigo_volume
+          in: query
+          description: Código de rastreio do volume (opcional, filtra os dados do volume especificado)
+          required: false
+          schema:
+            type: string
+            example: "VOL1234567890"
+      responses:
+        '200':
+          description: Lista de ocorrências do frete
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    codigo:
+                      type: string
+                      description: Código numérico da ocorrência na Frete Rápido
+                      example: "0"
+                    data_ocorrencia:
+                      type: string
+                      format: date-time
+                      description: Data da ocorrência
+                      example: "2023-05-20 14:30:00"
+                    data_atualizacao:
+                      type: string
+                      format: date-time
+                      description: Data de atualização da ocorrência
+                      example: "2023-05-20 15:00:00"
+                    data_reentrega:
+                      type: string
+                      format: date
+                      description: Data em caso de nova tentativa de entrega
+                      example: "2023-05-22"
+                      nullable: true
+                    data_prevista_entrega:
+                      type: string
+                      format: date
+                      description: Data prevista de entrega calculada no ato da cotação
+                      example: "2023-05-25"
+                      nullable: true
+                    prazo_devolucao:
+                      type: string
+                      description: Quantidade de dias úteis para devolução da carga
+                      example: "5"
+                      nullable: true
+                    mensagem:
+                      type: string
+                      description: Mensagem da transportadora
+                      example: "Entrega realizada com sucesso"
+                      maxLength: 255
+                      nullable: true
+                    razao_social_transportadora:
+                      type: string
+                      description: Razão social da transportadora na ocorrência
+                      example: "Transportadora Exemplo LTDA"
+                      maxLength: 255
+                    descricao_ocorrencia:
+                      type: string
+                      description: Descrição da ocorrência na transportadora
+                      example: "Encomenda entregue"
+                      maxLength: 255
+                      nullable: true
+                    codigo_ocorrencia:
+                      type: integer
+                      description: Código da ocorrência na transportadora
+                      example: 1234
+                      nullable: true
+                    nome_entregador:
+                      type: string
+                      description: Nome do entregador responsável
+                      example: "João da Silva"
+                      maxLength: 50
+                      nullable: true
+                    cnpj_cpf_entregador:
+                      type: string
+                      description: CNPJ/CPF do entregador
+                      example: "12345678901"
+                      maxLength: 14
+                      nullable: true
+                    comprovantes:
+                      type: array
+                      description: Comprovantes da ocorrência
+                      items:
+                        type: string
+                      nullable: true
+                    codigos_redespacho:
+                      type: array
+                      description: Códigos de redespacho da ocorrência
+                      items:
+                        type: string
+                      nullable: true
+                    nome:
+                      type: string
+                      description: Nome da ocorrência
+                      example: "Entrega"
+                    codigo_volume:
+                      type: string
+                      description: Código de rastreio do volume
+                      example: "VOL1234567890"
+                      nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      summary: Edição de Frete
+      description: >
+        Permite atualizar o status de um frete contratado na Frete Rápido por meio do envio de uma nova ocorrência.
+        Importante: Não é possível retroceder no fluxo de entrega (ex: de "Entregue" para "Em trânsito").
+      operationId: alterarOcorrenciaFrete
+      tags:
+        - Alterar Ocorrências de Frete
+      parameters:
+        - name: identificador
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identificador do frete contratado (id_frete ou numero_pedido)
+          example: "FR123456789"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - occurrence
+                - date_time
+              properties:
+                occurrence:
+                  type: integer
+                  description: Código da ocorrência conforme tabela da Frete Rápido
+                  example: 0
+                date_time:
+                  type: string
+                  format: date-time
+                  description: Data e hora da ocorrência (formato YYYY-MM-DD hh:mm:ss)
+                  example: "2021-02-11 15:26:00"
+                message:
+                  type: string
+                  maxLength: 255
+                  description: Mensagem de até 255 caracteres
+                  example: "Entrega realizada com sucesso"
+                receipts:
+                  type: array
+                  description: Lista de URLs com comprovantes da ocorrência
+                  items:
+                    type: string
+                    format: uri
+                    example: "https://www.freterapido.com/comprovantes/entrega/1.jpg"
+      responses:
+        '200':
+          description: Ocorrência registrada com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/occurrences/invoices:
+    get:
+      summary: Listagens de Frete 
+      description: >
+        Permite consultar todas as ocorrências de rastreio de um frete através do número e série ou da chave de acesso da nota fiscal.
+        É permitido informar até 50 notas fiscais.
+      tags:
+        - Consultar ocorrências de rastreio por notas fiscais
+      parameters:
+        - name: invoices
+          in: query
+          description: >
+            Array JSON com notas fiscais contendo número e série ou chave de acesso. Até 50 itens.
+            Exemplo: [{"key":""},{"number":"1234","serie":"1"}]
+          required: true
+          schema:
+            type: string
+            example: '[{"key":"12345678901234567890123456789012345678901234"},{"number":"1234","serie":"1"}]'
+        - name: codigo_volume
+          in: query
+          description: Código de rastreio do volume (opcional)
+          required: false
+          schema:
+            type: string
+            example: "VOL1234567890"
+      responses:
+        '200':
+          description: Lista de ocorrências por nota fiscal
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      invoices:
+                        type: array
+                        description: Lista de notas fiscais relacionadas ao frete
+                        items:
+                          type: object
+                          properties:
+                            number:
+                              type: string
+                              description: Número da nota fiscal
+                              example: "1234"
+                            serie:
+                              type: string
+                              description: Série da nota fiscal
+                              example: "1"
+                            key:
+                              type: string
+                              description: Chave de acesso da nota fiscal
+                              example: "12345678901234567890123456789012345678901234"
+                      occurrences:
+                        type: array
+                        description: Lista de ocorrências do frete
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: integer
+                              description: Código numérico da ocorrência na Frete Rápido
+                              example: 0
+                            name:
+                              type: string
+                              description: Nome da ocorrência
+                              example: "Entrega"
+                            occurrence_date:
+                              type: string
+                              format: date-time
+                              description: Data da ocorrência
+                              example: "2023-05-20 14:30:00"
+                            updated_date:
+                              type: string
+                              format: date-time
+                              description: Data de atualização da ocorrência
+                              example: "2023-05-20 15:00:00"
+                            attempted_redelivery_date:
+                              type: string
+                              format: date
+                              description: Data da nova tentativa de entrega (se houver)
+                              example: "2023-05-22"
+                              nullable: true
+                            expected_delivery_date:
+                              type: string
+                              format: date
+                              description: Data prevista de entrega
+                              example: "2023-05-25"
+                              nullable: true
+                            return_deadline_date:
+                              type: string
+                              description: Quantidade de dias úteis para devolução (se houver)
+                              example: "5"
+                              nullable: true
+                            message:
+                              type: string
+                              maxLength: 255
+                              description: Mensagem da transportadora (se houver)
+                              example: "Entrega realizada com sucesso"
+                              nullable: true
+                            codigo_volume:
+                              type: string
+                              description: Código de rastreio do volume (se houver)
+                              example: "VOL1234567890"
+                              nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/occurrences/interval:
+    post:
+      summary: Listagens de Frete  
+      description: >
+        Permite consultar as ocorrências de um frete dentro de um período especificado.
+        O intervalo entre data_inicio e data_fim deve ser no máximo 4 horas.
+        Limite de 500 fretes por requisição.
+      tags:
+        - Consultar ocorrências de fretes dentro de um intervalo de tempo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data_inicio:
+                  type: string
+                  format: date-time
+                  description: Data de início da ocorrência (YYYY-MM-DD hh:mm)
+                  example: "2023-05-20 10:00"
+                data_fim:
+                  type: string
+                  format: date-time
+                  description: Data final da ocorrência (YYYY-MM-DD hh:mm)
+                  example: "2023-05-20 14:00"
+                codigo_volume:
+                  type: string
+                  description: Código de rastreio do volume (opcional)
+                  example: "VOL1234567890"
+              required:
+                - data_inicio
+                - data_fim
+      responses:
+        '200':
+          description: Lista de ocorrências no período especificado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        codigo:
+                          type: integer
+                          description: Código da ocorrência
+                          example: 1
+                        status:
+                          type: string
+                          description: Status da ocorrência
+                          example: "Em trânsito"
+                        data_ocorrencia:
+                          type: string
+                          format: date-time
+                          description: Data da ocorrência
+                          example: "2023-05-20 11:15:00"
+                        data_atualizacao:
+                          type: string
+                          format: date-time
+                          description: Data de atualização da ocorrência
+                          example: "2023-05-20 11:30:00"
+                        data_reentrega:
+                          type: string
+                          format: date
+                          description: Data em caso de nova tentativa de entrega
+                          example: "2023-05-22"
+                          nullable: true
+                        data_prevista_entrega:
+                          type: string
+                          format: date
+                          description: Data prevista de entrega
+                          example: "2023-05-25"
+                          nullable: true
+                        prazo_devolucao:
+                          type: string
+                          description: Quantidade de dias úteis para devolução da carga
+                          example: "5"
+                          nullable: true
+                        mensagem:
+                          type: string
+                          maxLength: 255
+                          description: Mensagem da transportadora
+                          example: "Entrega prevista para o dia 25/05"
+                          nullable: true
+                        codigo_volume:
+                          type: string
+                          description: Código de rastreio do volume
+                          example: "VOL1234567890"
+                          nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/occurrences:
+    post:
+      summary: Listagens de Frete  
+      description: >
+        Permite consultar todas as ocorrências de rastreio de vários fretes.
+        As ocorrências são apresentadas por ordem de acontecimento.
+        Limite de 100 fretes por requisição.
+      tags:
+        - Consultar ocorrências de rastreio de vários fretes em lote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fretes:
+                  type: array
+                  description: Lista de identificadores dos fretes (id_frete)
+                  items:
+                    type: string
+                    minLength: 13
+                    maxLength: 13
+                  example:
+                    - "FR11111111111"
+                    - "FR22222222222"
+              required:
+                - fretes
+      responses:
+        '200':
+          description: Ocorrências retornadas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      codigo:
+                        type: integer
+                        description: Código numérico da ocorrência na Frete Rápido
+                        example: 1
+                      data_ocorrencia:
+                        type: string
+                        format: date-time
+                        description: Data da ocorrência
+                        example: "2023-05-20 11:15:00"
+                      data_atualizacao:
+                        type: string
+                        format: date-time
+                        description: Data de atualização da ocorrência
+                        example: "2023-05-20 11:30:00"
+                      data_reentrega:
+                        type: string
+                        format: date
+                        description: Data em caso de nova tentativa de entrega
+                        example: "2023-05-22"
+                        nullable: true
+                      data_prevista_entrega:
+                        type: string
+                        format: date
+                        description: Data prevista de entrega
+                        example: "2023-05-25"
+                        nullable: true
+                      prazo_devolucao:
+                        type: string
+                        description: Quantidade de dias úteis para devolução da carga/mercadoria
+                        example: "5"
+                        nullable: true
+                      mensagem:
+                        type: string
+                        maxLength: 255
+                        description: Mensagem livre para informação pela transportadora
+                        example: "Entrega prevista para o dia 25/05"
+                        nullable: true
+                      razao_social_transportadora:
+                        type: string
+                        maxLength: 255
+                        description: Razão social da transportadora na ocorrência
+                        example: "Transportadora XPTO Ltda"
+                      descricao_ocorrencia:
+                        type: string
+                        maxLength: 255
+                        description: Descrição da ocorrência na transportadora no momento da atualização
+                        example: "Carga embarcada no caminhão"
+                        nullable: true
+                      codigo_ocorrencia:
+                        type: integer
+                        description: Código da ocorrência na transportadora
+                        example: 123
+                        nullable: true
+                      nome_entregador:
+                        type: string
+                        maxLength: 50
+                        description: Nome do entregador responsável pela ocorrência
+                        example: "João da Silva"
+                        nullable: true
+                      cnpj_cpf_entregador:
+                        type: string
+                        maxLength: 14
+                        description: CNPJ/CPF do entregador responsável
+                        example: "12345678901"
+                        nullable: true
+                      comprovantes:
+                        type: array
+                        description: Comprovantes da ocorrência
+                        items:
+                          type: string
+                        example: []
+                        nullable: true
+                      codigos_redespacho:
+                        type: array
+                        description: Códigos de redespacho da ocorrência
+                        items:
+                          type: string
+                        example: []
+                        nullable: true
+                      nome:
+                        type: string
+                        description: Nome da ocorrência
+                        example: "Em trânsito"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quote/find:
+    get:
+      summary: Listagens de Frete
+      description: >
+        Permite consultar as informações de um frete específico utilizando um identificador único,
+        que pode ser o número do pedido ou dados da NF-e. Em caso de múltiplos fretes com o mesmo
+        número de pedido, retorna o frete mais recente. Busca pela NF-e prioriza chave de acesso,
+        depois número e série. Retorna os dados disponíveis do frete.
+        
+        **Observação:** Deve ser informado apenas um identificador único por requisição.
+      tags:
+        - Consultar informações de um determinado frete por múltiplos parâmetros
+      parameters:
+        - name: order_number
+          in: query
+          description: Número do pedido contratado na Frete Rápido
+          schema:
+            type: string
+          required: false
+        - name: parent_order_number
+          in: query
+          description: Número do pedido pai de um frete contratado na Frete Rápido
+          schema:
+            type: string
+          required: false
+        - name: invoice_key
+          in: query
+          description: Chave de acesso da nota fiscal
+          schema:
+            type: string
+            pattern: '^\d+$'
+          required: false
+        - name: invoice_number
+          in: query
+          description: Número da nota fiscal
+          schema:
+            type: string
+            pattern: '^\d+$'
+          required: false
+        - name: invoice_serie
+          in: query
+          description: Série da nota fiscal (Obrigatório se informado invoice_number)
+          schema:
+            type: string
+            pattern: '^\d+$'
+          required: false
+        - name: codigo_volume
+          in: query
+          description: Código de rastreio do volume (retorna dados do volume especificado)
+          schema:
+            type: string
+          required: false
+      responses:
+        '200':
+          description: Dados do frete consultado retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id_frete:
+                    type: string
+                    description: Identificador do frete contratado na Frete Rápido
+                    example: "FR12345678901"
+                  url_rastreio:
+                    type: string
+                    description: URL de rastreio do frete contratado
+                    example: "https://freterapido.com/rastreamento/FR12345678901"
+                  numero_pedido_pai:
+                    type: string
+                    description: Número do pedido pai na loja
+                    example: "PED12345"
+                  numero_pedido:
+                    type: string
+                    description: Número do pedido na loja
+                    example: "PED67890"
+                  data_pedido:
+                    type: string
+                    format: date-time
+                    description: Data de criação do pedido na loja
+                    nullable: true
+                    example: "2024-05-15 14:30:00"
+                  data_faturamento:
+                    type: string
+                    format: date-time
+                    description: Data de faturamento do pedido na loja
+                    nullable: true
+                    example: "2024-05-16 10:00:00"
+                  data_prevista_entrega:
+                    type: string
+                    format: date
+                    description: Data prevista de entrega (referência)
+                    nullable: true
+                    example: "2024-05-20"
+                  forma_pagamento:
+                    type: string
+                    description: Forma de pagamento do pedido
+                    nullable: true
+                    example: "Cartão de crédito"
+                  obs_cliente:
+                    type: string
+                    description: Observação do cliente sobre o pedido
+                    nullable: true
+                    example: "Por favor, entregar após 18h"
+                  data_contratacao:
+                    type: string
+                    format: date-time
+                    description: Data e hora da contratação do frete
+                    example: "2024-05-15 15:00:00"
+                  tipo_cobranca:
+                    type: string
+                    description: Tipo de cobrança selecionado para o frete (CIF ou FOB)
+                    example: "CIF"
+                  modal:
+                    type: string
+                    description: Modalidade do frete (Rodoviário, Aéreo)
+                    example: "Rodoviário"
+                  data_coleta:
+                    type: string
+                    format: date
+                    description: Data de possível coleta informada pelo remetente
+                    nullable: true
+                    example: "2024-05-16"
+                  referencia_tabela:
+                    type: string
+                    description: Referência da tabela
+                    example: "Tabela 123"
+                  embarcador:
+                    type: object
+                    description: Dados do endereço do remetente
+                    properties:
+                      cnpj:
+                        type: string
+                        description: CNPJ do remetente da carga
+                        example: "12345678000195"
+                      inscricao_estadual:
+                        type: string
+                        description: Inscrição estadual do remetente
+                        example: "123456789"
+                      razao_social:
+                        type: string
+                        description: Razão social do remetente
+                        example: "Empresa XYZ Ltda"
+                      nome_fantasia:
+                        type: string
+                        description: Nome fantasia do remetente
+                        example: "XYZ Transportes"
+                      endereco:
+                        type: object
+                        properties:
+                          rua:
+                            type: string
+                            example: "Rua das Flores"
+                          numero:
+                            type: string
+                            example: "123"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Sala 1"
+                          bairro:
+                            type: string
+                            example: "Centro"
+                          cidade:
+                            type: string
+                            example: "São Paulo"
+                          estado:
+                            type: string
+                            example: "SP"
+                          cep:
+                            type: string
+                            example: "01234-567"
+                  estimated_date:
+                    type: string
+                    format: date
+                    description: Prazo de entrega original devolvido pela transportadora na cotação
+                    nullable: true
+                    example: "2024-05-22"
+                  prazo_original_transportador:
+                    type: string
+                    format: date
+                    description: Prazo original contado a partir da coleta/postagem
+                    nullable: true
+                    example: "2024-05-23"
+                  destinatario:
+                    type: object
+                    description: Dados do destinatário da carga
+                    properties:
+                      cnpj_cpf:
+                        type: string
+                        description: CNPJ ou CPF do destinatário
+                        example: "98765432000199"
+                      nome:
+                        type: string
+                        description: Nome ou razão social do destinatário
+                        example: "Cliente ABC Ltda"
+                      endereco:
+                        type: object
+                        properties:
+                          rua:
+                            type: string
+                            example: "Av. Brasil"
+                          numero:
+                            type: string
+                            nullable: true
+                            example: "456"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Apto 101"
+                          bairro:
+                            type: string
+                            nullable: true
+                            example: "Jardim"
+                          cidade:
+                            type: string
+                            example: "Rio de Janeiro"
+                          estado:
+                            type: string
+                            example: "RJ"
+                          cep:
+                            type: string
+                            example: "23456-789"
+                  expedidor:
+                    type: object
+                    description: Dados do expedidor (opcional)
+                    nullable: true
+                    properties:
+                      cnpj:
+                        type: string
+                        example: "11223344000155"
+                      inscricao_estadual:
+                        type: string
+                        example: "987654321"
+                      razao_social:
+                        type: string
+                        example: "Expedidor LTDA"
+                      nome_fantasia:
+                        type: string
+                        example: "Expedidor Fantasia"
+                      endereco:
+                        type: object
+                        properties:
+                          rua:
+                            type: string
+                            example: "Rua do Expedidor"
+                          numero:
+                            type: string
+                            example: "789"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Galpão 2"
+                          bairro:
+                            type: string
+                            example: "Industrial"
+                          cidade:
+                            type: string
+                            example: "Belo Horizonte"
+                          estado:
+                            type: string
+                            example: "MG"
+                          cep:
+                            type: string
+                            example: "34567-890"
+                  volumes:
+                    type: array
+                    description: Lista dos volumes informados no frete
+                    items:
+                      type: object
+                      properties:
+                        tipo:
+                          type: string
+                          description: Tipo do volume informado
+                          example: "Caixa"
+                        sku:
+                          type: string
+                          nullable: true
+                          example: "SKU1234"
+                        descricao:
+                          type: string
+                          nullable: true
+                          example: "Caixa com produtos eletrônicos"
+                        quantidade:
+                          type: integer
+                          example: 6
+                        peso_total:
+                          type: number
+                          format: float
+                          example: 3.0
+                        valor_total:
+                          type: number
+                          format: float
+                          example: 120.00
+                        altura:
+                          type: number
+                          format: float
+                          example: 0.5
+                        largura:
+                          type: number
+                          format: float
+                          example: 0.4
+                        comprimento:
+                          type: number
+                          format: float
+                          example: 0.6
+                  transportadora:
+                    type: object
+                    description: Dados da transportadora
+                    properties:
+                      cnpj:
+                        type: string
+                        example: "55443322000166"
+                      razao_social:
+                        type: string
+                        example: "Transportadora XPTO Ltda"
+                      nome_fantasia:
+                        type: string
+                        example: "XPTO Transportes"
+                      inscricao_estadual:
+                        type: string
+                        example: "123456789"
+                      servico:
+                        type: string
+                        example: "Entrega Expressa"
+                      valor_cotado:
+                        type: number
+                        format: float
+                        example: 150.75
+                      endereco:
+                        type: object
+                        properties:
+                          cep:
+                            type: string
+                            example: "45678-901"
+                          bairro:
+                            type: string
+                            example: "Centro"
+                          rua:
+                            type: string
+                            example: "Rua da Transportadora"
+                          numero:
+                            type: string
+                            nullable: true
+                            example: "1000"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Andar 5"
+                          cidade:
+                            type: string
+                            example: "Curitiba"
+                          estado:
+                            type: string
+                            example: "PR"
+                  codigos:
+                    type: object
+                    properties:
+                      correios:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["ABC123456789BR"]
+                      transportadora:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["TRK123456"]
+                      redespacho:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["RED123456"]
+                  ultimo_status:
+                    type: object
+                    properties:
+                      codigo:
+                        type: integer
+                        example: 101
+                      descricao:
+                        type: string
+                        example: "Em trânsito"
+                      data:
+                        type: string
+                        format: date-time
+                        example: "2024-05-17T09:30:00"
+                  historico_status:
+                    type: array
+                    description: Histórico de status do frete
+                    items:
+                      type: object
+                      properties:
+                        codigo:
+                          type: integer
+                          example: 100
+                        descricao:
+                          type: string
+                          example: "Pedido recebido"
+                        data:
+                          type: string
+                          format: date-time
+                          example: "2024-05-15T16:00:00"
+                  notas_fiscais:
+                    type: array
+                    description: Notas fiscais vinculadas ao frete
+                    items:
+                      type: object
+                      properties:
+                        chave:
+                          type: string
+                          example: "12345678901234567890123456789012345678901234"
+                        numero:
+                          type: string
+                          example: "12345"
+                        serie:
+                          type: string
+                          example: "1"
+                        data_emissao:
+                          type: string
+                          format: date-time
+                          example: "2024-05-14T12:00:00"
+                  taxas:
+                    type: array
+                    description: Taxas cobradas no frete
+                    items:
+                      type: object
+                      properties:
+                        descricao:
+                          type: string
+                          example: "Taxa adicional de combustível"
+                        valor:
+                          type: number
+                          format: float
+                          example: 10.50
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quote/{id_frete}:
+    get:
+      summary: Listagens de Frete 
+      description: >
+        Método que permite consultar as informações disponíveis de um determinado frete pelo seu identificador (id_frete).
+        Pode-se opcionalmente filtrar os dados pelo código de volume específico.
+      tags:
+        - Consultar informações de um frete pelo ID Frete Rápido
+      parameters:
+        - name: id_frete
+          in: path
+          required: true
+          description: Identificador do frete contratado na Frete Rápido. Pode ser utilizado para rastrear o frete.
+          schema:
+            type: string
+            minLength: 13
+            maxLength: 13
+            example: "FR12345678901"
+        - name: codigo_volume
+          in: query
+          required: false
+          description: Código de rastreio do volume para filtrar dados de um volume específico
+          schema:
+            type: string
+            example: "VOL123456"
+      responses:
+        '200':
+          description: Dados do frete consultado retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id_frete:
+                    type: string
+                    description: Identificador do frete contratado
+                    example: "FR12345678901"
+                  url_rastreio:
+                    type: string
+                    description: URL de rastreio do frete contratado
+                    example: "https://freterapido.com/rastreio/FR12345678901"
+                  numero_pedido_pai:
+                    type: string
+                    description: Número do pedido pai na loja
+                    example: "12345"
+                  numero_pedido:
+                    type: string
+                    description: Número do pedido na loja
+                    example: "54321"
+                  data_pedido:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: Data de criação do pedido na loja
+                    example: "2023-05-01 15:30:00"
+                  data_faturamento:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: Data de faturamento do pedido na loja
+                    example: "2023-05-02 10:00:00"
+                  data_prevista_entrega:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Data prevista de entrega (referência)
+                    example: "2023-05-25"
+                  forma_pagamento:
+                    type: string
+                    nullable: true
+                    description: Forma de pagamento do pedido
+                    example: "Cartão de Crédito"
+                  obs_cliente:
+                    type: string
+                    nullable: true
+                    description: Observação do cliente sobre o pedido
+                    example: "Entregar na portaria"
+                  data_contratacao:
+                    type: string
+                    format: date-time
+                    description: Data e hora da contratação do frete
+                    example: "2023-04-28 14:00:00"
+                  tipo_cobranca:
+                    type: string
+                    description: Tipo de cobrança selecionado para o frete (CIF ou FOB)
+                    example: "CIF"
+                  modal:
+                    type: string
+                    description: Modalidade do frete (Rodoviário, Aéreo)
+                    example: "Rodoviário"
+                  data_coleta:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Data possível de coleta informada pelo remetente
+                    example: "2023-05-03"
+                  referencia_tabela:
+                    type: string
+                    description: Referência da tabela
+                    example: "TABELA_2023"
+                  embarcador:
+                    type: object
+                    description: Dados do remetente da carga
+                    properties:
+                      cnpj:
+                        type: string
+                        example: "12345678000199"
+                      inscricao_estadual:
+                        type: string
+                        example: "123456789"
+                      razao_social:
+                        type: string
+                        example: "Empresa XYZ Ltda"
+                      nome_fantasia:
+                        type: string
+                        example: "XYZ"
+                      endereco:
+                        type: object
+                        properties:
+                          rua:
+                            type: string
+                            example: "Rua A"
+                          numero:
+                            type: string
+                            example: "100"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Sala 1"
+                          bairro:
+                            type: string
+                            example: "Centro"
+                          cidade:
+                            type: string
+                            example: "São Paulo"
+                          estado:
+                            type: string
+                            example: "SP"
+                          cep:
+                            type: string
+                            example: "01001000"
+                  estimated_date:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Prazo de entrega original devolvido pela transportadora em cotação
+                    example: "2023-05-24"
+                  prazo_original_transportador:
+                    type: string
+                    format: date
+                    nullable: true
+                    description: Prazo de entrega contado a partir da coleta/postagem
+                    example: "2023-05-22"
+                  destinatario:
+                    type: object
+                    description: Dados do destinatário da carga
+                    properties:
+                      cnpj_cpf:
+                        type: string
+                        example: "12345678000199"
+                      nome:
+                        type: string
+                        example: "Cliente ABC"
+                      endereco:
+                        type: object
+                        properties:
+                          rua:
+                            type: string
+                            example: "Av. B"
+                          numero:
+                            type: string
+                            nullable: true
+                            example: "200"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Apto 101"
+                          bairro:
+                            type: string
+                            nullable: true
+                            example: "Jardim"
+                          cidade:
+                            type: string
+                            example: "Rio de Janeiro"
+                          estado:
+                            type: string
+                            example: "RJ"
+                          cep:
+                            type: string
+                            example: "20000000"
+                  expedidor:
+                    type: object
+                    nullable: true
+                    description: Dados do expedidor da carga
+                    properties:
+                      cnpj:
+                        type: string
+                        nullable: true
+                        example: "12345678000199"
+                      inscricao_estadual:
+                        type: string
+                        nullable: true
+                        example: "987654321"
+                      razao_social:
+                        type: string
+                        nullable: true
+                        example: "Expedidor Ltda"
+                      nome_fantasia:
+                        type: string
+                        nullable: true
+                        example: "Expedição"
+                      endereco:
+                        type: object
+                        nullable: true
+                        properties:
+                          rua:
+                            type: string
+                            nullable: true
+                            example: "Rua C"
+                          numero:
+                            type: string
+                            nullable: true
+                            example: "300"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Galpão 4"
+                          bairro:
+                            type: string
+                            nullable: true
+                            example: "Industrial"
+                          cidade:
+                            type: string
+                            nullable: true
+                            example: "Curitiba"
+                          estado:
+                            type: string
+                            nullable: true
+                            example: "PR"
+                          cep:
+                            type: string
+                            nullable: true
+                            example: "80000000"
+                  volumes:
+                    type: array
+                    description: Lista de volumes informados no frete
+                    items:
+                      type: object
+                      properties:
+                        tipo:
+                          type: string
+                          description: Tipo do volume informado
+                          example: "Caixa"
+                        sku:
+                          type: string
+                          nullable: true
+                          example: "SKU12345"
+                        descricao:
+                          type: string
+                          nullable: true
+                          example: "Caixa com produtos eletrônicos"
+                        quantidade:
+                          type: integer
+                          description: Quantidade de volumes iguais
+                          example: 6
+                        peso_total:
+                          type: number
+                          format: float
+                          description: Peso total em Kg da quantidade de volumes
+                          example: 3.0
+                        valor_total:
+                          type: number
+                          format: float
+                          example: 120.00
+                        altura:
+                          type: number
+                          format: float
+                          example: 0.5
+                        largura:
+                          type: number
+                          format: float
+                          example: 0.4
+                        comprimento:
+                          type: number
+                          format: float
+                          example: 0.3
+                  transportadora:
+                    type: object
+                    properties:
+                      cnpj:
+                        type: string
+                        example: "12345678000199"
+                      razao_social:
+                        type: string
+                        example: "Transportadora XPTO Ltda"
+                      nome_fantasia:
+                        type: string
+                        example: "XPTO"
+                      inscricao_estadual:
+                        type: string
+                        example: "123456789"
+                      valor_cotado:
+                        type: number
+                        format: float
+                        example: 350.00
+                      endereco:
+                        type: object
+                        properties:
+                          cep:
+                            type: string
+                            example: "01001000"
+                          bairro:
+                            type: string
+                            example: "Centro"
+                          rua:
+                            type: string
+                            example: "Rua Transporte"
+                          numero:
+                            type: string
+                            nullable: true
+                            example: "123"
+                          complemento:
+                            type: string
+                            nullable: true
+                            example: "Sala 2"
+                          cidade:
+                            type: string
+                            example: "São Paulo"
+                          estado:
+                            type: string
+                            example: "SP"
+                  codigos:
+                    type: object
+                    properties:
+                      correios:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["BR123456789BR"]
+                      transportadora:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["XPTO12345"]
+                      redespacho:
+                        type: array
+                        items:
+                          type: string
+                        nullable: true
+                        example: ["RD123456"]
+                  ultimo_status:
+                    type: object
+                    properties:
+                      codigo:
+                        type: integer
+                        example: 1
+                      nome:
+                        type: string
+                        example: "Em trânsito"
+                      data_ocorrencia:
+                        type: string
+                        format: date-time
+                        example: "2023-05-20 11:15:00"
+                      data_atualizacao:
+                        type: string
+  
+  /external/shipper/v1/quote/doccob/find:
+    get:
+      summary: Auditoria de Frete
+      description: Retorna faturas (DOCCOB) emitidas num intervalo de datas filtrado por tipo, status, CNPJ, etc.
+      tags:
+        - Consulta de Documentos de Cobrança (DOCCOB) por período
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Token de integração Frete Rápido (32 caracteres)
+        - name: tipo_data
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [0,1,2]
+          description: |
+            Tipo de data para busca: 
+            0 = emissão, 1 = processamento, 2 = criação
+        - name: status_fatura
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [0,1,2,3]
+          description: |
+            Status da fatura: 
+            0 = aberta, 1 = paga, 2 = vencida, 3 = cancelada
+        - name: data_inicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Data/hora inicial (YYYY‑MM‑DD hh:mm)
+        - name: data_fim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Data/hora final (YYYY‑MM‑DD hh:mm)
+        - name: por_pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Quantidade de registros por página
+        - name: cnpj_transportadora
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar pelo CNPJ da transportadora
+        - name: cnpj_expedidor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar pelo CNPJ do expedidor
+        - name: status_cte
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0,1,2]
+          description: Filtrar CT-e 0=pendente,1=liberado,2=rejeitado
+      responses:
+        '200':
+          description: Retorno de faturas DOCCOB no período solicitado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  per_page:
+                    type: integer
+                  last_page:
+                    type: integer
+                  current_page:
+                    type: integer
+                  fatura:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        versao:
+                          type: string
+                        cnpj_transportadora:
+                          type: string
+                        tipo_documento:
+                          type: string
+                        serie:
+                          type: string
+                        numero:
+                          type: string
+                        data_emissao:
+                          type: string
+                          format: date-time
+                        data_vencimento:
+                          type: string
+                          format: date-time
+                        valor_total:
+                          type: string
+                        percentual_multa_atraso:
+                          type: string
+                        valor_juros_dia_atraso:
+                          type: string
+                        data_limite_desconto:
+                          type: string
+                          format: date
+        '400':
+          description: Requisição malformada
+        '401':
+          description: Token inválido ou não informado
+        '404':
+          description: Nenhuma fatura encontrada para os filtros
+        '500':
+          description: Erro interno no servidor
+
+  /external/shipper/v1/quote/cte/find:
+    get:
+      summary: Auditoria de Frete 
+      description: >
+        Consulta componentes de CT‑e vinculados a notas fiscais dentro de um período fornecido. Retorna dados paginados com detalhes do CT‑e :contentReference[oaicite:2]{index=2}.
+      tags:
+        - Consulta de Conhecimento de Transporte por Período (CT‑e)
+      parameters:
+        - name: token
+          in: query
+          description: Token de integração Frete Rápido (32 caracteres)
+          required: true
+          schema:
+            type: string
+        - name: tipo_data
+          in: query
+          description: Tipo de data para filtro (1 = emissão, 2 = processamento, 3 = criação)
+          required: true
+          schema:
+            type: integer
+            enum: [1, 2, 3]
+        - name: data_inicio
+          in: query
+          description: Data/hora inicial (YYYY-MM-DD hh:mm)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: data_fim
+          in: query
+          description: Data/hora final (YYYY-MM-DD hh:mm)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: pagina
+          in: query
+          description: Página de resultados (opcional, padrão = 1)
+          required: false
+          schema:
+            type: integer
+        - name: tipo_cte
+          in: query
+          description: Filtrar por status do CT‑e (0 = pendente, 1 = aprovado, 2 = rejeitado)
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+      responses:
+        '200':
+          description: Lista paginada de CT‑e encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  per_page:
+                    type: integer
+                  last_page:
+                    type: integer
+                  current_page:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id_frete:
+                          type: string
+                          description: Identificador do frete (13 caracteres)
+                        numero_pedido:
+                          type: string
+                          nullable: true
+                        link:
+                          type: string
+                          nullable: true
+                        chave:
+                          type: string
+                          description: Chave de acesso do CT‑e (44 caracteres)
+                        serie:
+                          type: string
+                          nullable: true
+                        numero:
+                          type: string
+                          nullable: true
+                        valor:
+                          type: string
+                          nullable: true
+                        valor_frete:
+                          type: string
+                          nullable: true
+                        peso_bruto:
+                          type: string
+                          nullable: true
+                        peso_cubado:
+                          type: string
+                          nullable: true
+                        tipo_operacao:
+                          type: string
+                          nullable: true
+                        data:
+                          type: string
+                          format: date-time
+                        data_emissao:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        cnpj_consignatario:
+                          type: string
+                          nullable: true
+                        cnpj_emissor_conhecimento:
+                          type: string
+                          nullable: true
+                        cnpj_emissor_nf:
+                          type: string
+                          nullable: true
+                        peso_taxado:
+                          type: string
+                          nullable: true
+                        tipo_frete:
+                          type: string
+                          nullable: true
+                        base_calculo_icms:
+                          type: string
+                          nullable: true
+                        percentual_icms:
+                          type: string
+                          nullable: true
+                        valor_icms:
+                          type: string
+                          nullable: true
+                        quantidade_volumes:
+                          type: integer
+                          nullable: true
+                        valor_frete_peso_volume:
+                          type: string
+                          nullable: true
+                        valor_coleta:
+                          type: string
+                          nullable: true
+                        valor_despacho:
+                          type: string
+                          nullable: true
+                        valor_redespacho:
+                          type: string
+                          nullable: true
+                        valor_adicional:
+                          type: string
+                          nullable: true
+                        pedagio:
+                          type: string
+                          nullable: true
+                        aliquota_difal_origem:
+                          type: string
+                          nullable: true
+                        aliquota_difal_destino:
+                          type: string
+                          nullable: true
+                        difal_icms_origem:
+                          type: string
+                          nullable: true
+                        difal_icms_destino:
+                          type: string
+                          nullable: true
+                        advalorem:
+                          type: string
+                          nullable: true
+                        ademe:
+                          type: string
+                          nullable: true
+                        sec_cat:
+                          type: string
+                          nullable: true
+                        itr:
+                          type: string
+                          nullable: true
+                        tep:
+                          type: string
+                          nullable: true
+                        trt:
+                          type: string
+                          nullable: true
+                        tas:
+                          type: string
+                          nullable: true
+                        suframa:
+                          type: string
+                          nullable: true
+                        iss:
+                          type: string
+                          nullable: true
+                        iss_base_calculo:
+                          type: string
+                          nullable: true
+                        iss_percentual:
+                          type: string
+                          nullable: true
+                        gris:
+                          type: string
+                          nullable: true
+                        pis:
+                          type: string
+                          nullable: true
+                        cofins:
+                          type: string
+                          nullable: true
+                        cubagem:
+                          type: string
+                          nullable: true
+                        substituicao_tributaria:
+                          type: integer
+                          nullable: true
+                        cfop:
+                          type: integer
+                          nullable: true
+                        tipo_transporte:
+                          type: string
+                          nullable: true
+                        processamento:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        protocolo:
+                          type: string
+                          nullable: true
+                        codigo_status_auditoria:
+                          type: integer
+                        status_auditoria:
+                          type: string
+                        nfe:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              numero:
+                                type: string
+                              chave_acesso:
+                                type: string
+                              file_type:
+                                type: string
+                              action:
+                                type: string
+        '400':
+          description: Requisição malformada
+        '401':
+          description: Token inválido
+        '404':
+          description: Nenhum CT-e encontrado
+        '500':
+          description: Erro interno no servidor
+
+  /external/shipper/v2/quote/cte:
+    get:
+      summary: Auditoria de Frete
+      description: >
+        Retorna CT‑e vinculados a notas fiscais dentro de um período, filtrados por status de auditoria.
+      tags:
+        - Consulta de Conhecimento de Transporte (CT‑e) - Auditoria
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Token de integração Frete Rápido (32 caracteres)
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Data/hora inicial para busca do CT‑e no TMS (YYYY‑MM‑DD hh:mm)
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Data/hora final para busca do CT‑e no TMS (YYYY‑MM‑DD hh:mm)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Número da página (padrão = 1)
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0,1,2,3,4,5]
+          description: |
+            Status do CT‑e no módulo de auditoria:
+            0 = em processamento, 1 = com divergência, 2 = em negociação,
+            3 = pré liberado, 4 = liberado, 5 = rejeitado
+      responses:
+        '200':
+          description: Lista paginada de CT‑e com detalhes de auditoria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                  next_page:
+                    type: integer
+                    nullable: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        freight_id:
+                          type: string
+                          description: Id do frete (13 caracteres)
+                        order_number:
+                          type: string
+                          nullable: true
+                        access_key:
+                          type: string
+                          description: Chave do CT‑e (44 caracteres)
+                        serie:
+                          type: string
+                          nullable: true
+                        number:
+                          type: string
+                          nullable: true
+                        value:
+                          type: string
+                          nullable: true
+                        freight_value:
+                          type: string
+                          nullable: true
+                        gross_weight:
+                          type: string
+                          nullable: true
+                        cubed_weight:
+                          type: string
+                          nullable: true
+                        operation_type:
+                          type: string
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                        issue_date:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        consignee_register_number:
+                          type: string
+                          nullable: true
+                        issuer_register_number:
+                          type: string
+                          nullable: true
+                        invoice_issuer_register_number:
+                          type: string
+                          nullable: true
+                        taxed_weight:
+                          type: string
+                          nullable: true
+                        type:
+                          type: string
+                          nullable: true
+                        basis_calculation_icms:
+                          type: string
+                          nullable: true
+                        percentage_icms:
+                          type: string
+                          nullable: true
+                        value_icms:
+                          type: string
+                          nullable: true
+                        quantity_volumes:
+                          type: integer
+                          nullable: true
+                        freight_value_volume_weight:
+                          type: string
+                          nullable: true
+                        collection_value:
+                          type: string
+                          nullable: true
+                        reshipment_value:
+                          type: string
+                          nullable: true
+                        additional_value:
+                          type: string
+                          nullable: true
+                        difal_rate_origin:
+                          type: string
+                          nullable: true
+                        difal_rate_destination:
+                          type: string
+                          nullable: true
+                        difal_icms_origin:
+                          type: string
+                          nullable: true
+                        difal_icms_destination:
+                          type: string
+                          nullable: true
+                        advalorem:
+                          type: string
+                          nullable: true
+                        ademe:
+                          type: string
+                          nullable: true
+                        sec_cat:
+                          type: string
+                          nullable: true
+                        itr:
+                          type: string
+                          nullable: true
+                        trt:
+                          type: string
+                          nullable: true
+                        tas:
+                          type: string
+                          nullable: true
+                        suframa:
+                          type: string
+                          nullable: true
+                        value_iss:
+                          type: string
+                          nullable: true
+                        basis_calculation_iss:
+                          type: string
+                          nullable: true
+                        percentage_iss:
+                          type: string
+                          nullable: true
+                        gris:
+                          type: string
+                          nullable: true
+                        income_tax:
+                          type: string
+                          nullable: true
+                        cubage:
+                          type: string
+                          nullable: true
+                        tax_substitution:
+                          type: integer
+                          nullable: true
+                        cfop:
+                          type: integer
+                          nullable: true
+                        transport_type:
+                          type: string
+                          nullable: true
+                        processing:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        protocol:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                        invoices:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              access_key:
+                                type: string
+                              number:
+                                type: string
+                              serie:
+                                type: string
+                        webhook_sent_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        webhook_response:
+                          type: string
+                          nullable: true
+                        code:
+                          type: string
+                          nullable: true
+                        shipping_cost_invoice:
+                          type: string
+                          nullable: true
+                        total_invoice_value:
+                          type: string
+                          nullable: true
+                        toll_value:
+                          type: string
+                          nullable: true
+                        clearance_value:
+                          type: string
+                          nullable: true
+                        consignee_corporate_name:
+                          type: string
+                          nullable: true
+                        hired_carrier_corporate_name:
+                          type: string
+                          nullable: true
+                        hired_carrier_register_number:
+                          type: string
+                          nullable: true
+                        hired_shipper_corporate_name:
+                          type: string
+                          nullable: true
+                        hired_shipper_register_number:
+                          type: string
+                          nullable: true
+                        issuer_corporate_name:
+                          type: string
+                          nullable: true
+                        status_log:
+                          type: object
+                          nullable: true
+        '400':
+          description: Requisição malformada
+        '401':
+          description: Token inválido ou não informado
+        '404':
+          description: Nenhum CT‑e encontrado
+        '500':
+          description: Erro interno no servidor
+
+  /external/shipper/v1/sub-shippers:
+    get:
+      summary: Informações da Empresa 
+      description: >
+        Permite consultar os dados cadastrais dos subembarcadores vinculados ao embarcador principal.
+      tags:
+        - Consulta de Subembarcadores
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Número da página a ser consultada
+          example: 1
+      responses:
+        '200':
+          description: Lista paginada de subembarcadores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 0
+                  per_page:
+                    type: integer
+                    example: 20
+                  last_page:
+                    type: integer
+                    example: 1
+                  current_page:
+                    type: integer
+                    example: 1
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id_conta:
+                          type: integer
+                          example: 1234
+                        cnpj:
+                          type: string
+                          example: "00000000000000"
+                        razao_social:
+                          type: string
+                          example: "Subembarcador Exemplo Ltda"
+                        nome_fantasia:
+                          type: string
+                          example: "SubEx"
+                        endereco:
+                          type: object
+                          properties:
+                            cep:
+                              type: string
+                              example: "00006660"
+                            rua:
+                              type: string
+                              example: "Rua das Flores"
+                            numero:
+                              type: string
+                              example: "123"
+                            bairro:
+                              type: string
+                              example: "Centro"
+                            complemento:
+                              type: string
+                              example: "Sala 101"
+                            cidade:
+                              type: string
+                              example: "São Paulo"
+                            estado:
+                              type: string
+                              example: "SP"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tracking/orders:
+    post:
+      summary: Ocorrência de Frete 
+      description: >
+        Permite registrar ou atualizar o status de um pedido de forma customizada. Caso um pedido com as mesmas informações já exista, ele será atualizado.
+        Importante: É necessário informar pelo menos um dos seguintes campos: freightId, orderNumber ou invoiceKey.
+      operationId: inserirStatusPedido
+      tags:
+        - Inserir Status do Pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - finished
+                - statuses
+              properties:
+                freightId:
+                  type: string
+                  description: ID do frete (opcional, mas obrigatório junto com pelo menos um dos campos identificadores)
+                  example: "FR123456789"
+                orderNumber:
+                  type: string
+                  description: Número do pedido (opcional, mas obrigatório junto com pelo menos um dos campos identificadores)
+                  example: "PED123456"
+                invoiceKey:
+                  type: string
+                  description: Chave de acesso da nota fiscal eletrônica (opcional, mas obrigatório junto com pelo menos um dos campos identificadores)
+                  example: "35210600000000000123550010000000011420000001"
+                salesChannel:
+                  type: string
+                  description: Canal de vendas
+                  example: "Loja Online"
+                finished:
+                  type: boolean
+                  description: Define se o pedido foi finalizado. Importante para exibir o fluxo de rastreio corretamente.
+                  example: false
+                statuses:
+                  type: array
+                  description: Lista de status do pedido
+                  items:
+                    type: object
+                    required:
+                      - status
+                      - datetime
+                    properties:
+                      status:
+                        type: string
+                        description: Status do pedido
+                        example: "Pedido enviado para transportadora"
+                      datetime:
+                        type: string
+                        format: date-time
+                        description: Data e hora do status (formato YYYY-MM-DD HH:mm:ss)
+                        example: "2021-02-01 14:35:00"
+                recipient:
+                  type: object
+                  description: Informações do destinatário. Importante para envio de notificações.
+                  properties:
+                    name:
+                      type: string
+                      example: "João da Silva"
+                    email:
+                      type: string
+                      format: email
+                      example: "joao.silva@email.com"
+                    phone:
+                      type: string
+                      example: "11999998888"
+                    registerNumber:
+                      type: string
+                      example: "12345678900"
+                    zipCode:
+                      type: string
+                      example: "01001000"
+      responses:
+        '201':
+          description: Status do pedido registrado com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tracking/coordinates:
+    post:
+      summary: Ocorrência de Frete
+      description: >
+        Permite inserir coordenadas geográficas de entrega de um pedido para exibição no mapa da página de rastreio.
+        Se já existir rastreio com os mesmos dados, ele será atualizado.
+        Importante: ao menos um dos campos `freightId`, `orderNumber` ou `invoiceKey` deve ser informado.
+      operationId: inserirCoordenadasPedido
+      tags:
+        - Inserir Coordenadas do Pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - finished
+                - points
+              properties:
+                freightId:
+                  type: string
+                  description: ID do frete (opcional, mas obrigatório junto com ao menos um identificador)
+                  example: "FR123456789"
+                orderNumber:
+                  type: string
+                  description: Número do pedido (opcional, mas obrigatório junto com ao menos um identificador)
+                  example: "PED123456"
+                invoiceKey:
+                  type: string
+                  description: Chave de acesso da nota fiscal eletrônica (opcional, mas obrigatório junto com ao menos um identificador)
+                  example: "35210600000000000123550010000000011420000001"
+                finished:
+                  type: boolean
+                  description: Define se o pedido foi finalizado
+                  example: false
+                points:
+                  type: array
+                  description: Lista de coordenadas geográficas associadas ao pedido
+                  items:
+                    type: object
+                    required:
+                      - latitude
+                      - longitude
+                    properties:
+                      latitude:
+                        type: number
+                        format: float
+                        minimum: -90
+                        maximum: 90
+                        description: Latitude da coordenada
+                        example: -23.55052
+                      longitude:
+                        type: number
+                        format: float
+                        minimum: -180
+                        maximum: 180
+                        description: Longitude da coordenada
+                        example: -46.633308
+      responses:
+        '201':
+          description: Coordenadas registradas com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/labels:
+    post:
+      summary: Emissão de Etiqueta de Frete
+      description: >
+        Gera etiquetas para fretes contratados na Frete Rápido. É possível usar identificadores como ID do frete, chave da NF-e ou número do pedido.
+        Somente um tipo de identificador por agrupamento é permitido.
+        Recomendado separar pedidos por tipo de envio (transportadora, Correios etc).
+        O formato e o layout das etiquetas podem ser definidos via query parameters.
+      operationId: gerarEtiquetas
+      tags:
+        - Emissão de Etiquetas
+      parameters:
+        - name: layout
+          in: query
+          required: true
+          schema:
+            type: integer
+            enum: [1,2,3,4,5,6,7,8,9,10]
+          description: >
+            Modelo da etiqueta:
+              1 = Correios 2 por A4 ou Frete Rápido 9 por A4;
+              2 = Térmica (10x14);
+              3 = 4 por A4;
+              4 = 6 por A4;
+              5 = Anymarket ZPL2;
+              6 = Horizontal (19x5.5 cm);
+              7 = DANFE 4/A4 (10x10);
+              8 = DANFE 4/A4 (10x14);
+              9 = DANFE térmica (10x10);
+              10 = DANFE térmica (10x14)
+          example: 2
+        - name: formato
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pdf, zpl, base64]
+          description: Formato da etiqueta (PDF por padrão)
+          example: pdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 50
+              items:
+                type: object
+                properties:
+                  id_frete:
+                    type: array
+                    description: Lista de IDs de frete
+                    items:
+                      type: string
+                      example: "FR000000XXXXX"
+                  chave_nf:
+                    type: array
+                    description: Lista de chaves de acesso de NF-e
+                    items:
+                      type: string
+                      example: "35210600000000000123550010000000011420000001"
+                  numero_pedido:
+                    type: array
+                    description: Lista de números de pedido
+                    items:
+                      type: string
+                      example: "123456789"
+      responses:
+        '200':
+          description: Etiquetas geradas com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id_frete:
+                      type: array
+                      items:
+                        type: string
+                        example: "FR000000XXXXX"
+                    chave_nf:
+                      type: array
+                      items:
+                        type: string
+                        example: "35210600000000000123550010000000011420000001"
+                    numero_pedido:
+                      type: array
+                      items:
+                        type: string
+                        example: "123456789"
+                    plp:
+                      type: string
+                      format: uri
+                      example: "https://freterapido.com/plp1001.pdf"
+                    etiqueta:
+                      type: string
+                      format: uri
+                      example: "https://freterapido.com/etiqueta1001.pdf"
+                    erro:
+                      type: string
+                      example: "Erro ao gerar etiqueta"
+                    avisos:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      example:
+                        FR000000ZZZZZ: "Frete não encontrado"
+                    origem:
+                      type: object
+                      properties:
+                        cnpj:
+                          type: string
+                          example: "00000000000000"
+                        endereco:
+                          type: object
+                          properties:
+                            cep:
+                              type: string
+                              example: "00000000"
+                            rua:
+                              type: string
+                              example: "Rua Exemplo"
+                            numero:
+                              type: string
+                              example: "123"
+                            bairro:
+                              type: string
+                              example: "Centro"
+                            cidade:
+                              type: string
+                              example: "São Paulo"
+                            uf:
+                              type: string
+                              example: "SP"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/correios/reversa:
+    post:
+      summary: Frete Reverso
+      description: >
+        Gera código de postagem reversa dos Correios com base nos dados de remetente (consumidor) e destinatário (unidade de recebimento).
+        Apenas um serviço (PAC ou SEDEX) deve ser informado por solicitação.
+      operationId: gerarReversaCorreios
+      tags:
+        - Geração de Logística Reversa (Correios)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - 
+                - servico
+                - referencia
+                - remetente
+                - destinatario
+              properties:
+                servico:
+                  type: string
+                  description: Código do serviço dos Correios (ex 04677 = PAC, 04170 = SEDEX)
+                  example: "04170"
+                referencia:
+                  type: string
+                  maxLength: 30
+                  description: Referência da solicitação (ex número do pedido)
+                  example: "PEDIDO12345"
+                quantidade_itens:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  description: Quantidade de itens da reversa
+                  example: 1
+                notificar_remetente:
+                  type: boolean
+                  description: Indica se o remetente será notificado
+                  example: true
+                coleta_domiciliaria:
+                  type: boolean
+                  description: Se a coleta será realizada no endereço do remetente
+                  example: false
+                data_coleta_domiciliaria:
+                  type: string
+                  format: date
+                  description: Data agendada para a coleta domiciliária
+                  example: "2025-06-01"
+                prazo_postagem:
+                  type: integer
+                  minimum: 5
+                  maximum: 60
+                  description: Prazo limite (em dias) para postagem da reversa
+                  example: 10
+                remetente:
+                  type: object
+                  required:
+                    - nome
+                    - logradouro
+                    - numero
+                    - cidade
+                    - bairro
+                    - uf
+                    - cep
+                    - email
+                    - cpf_cnpj
+                  properties:
+                    nome:
+                      type: string
+                      example: "João da Silva"
+                    logradouro:
+                      type: string
+                      example: "Rua das Flores"
+                    numero:
+                      type: string
+                      example: "123"
+                    complemento:
+                      type: string
+                      example: "Apto 45"
+                    referencia:
+                      type: string
+                      example: "Próximo ao mercado"
+                    cidade:
+                      type: string
+                      example: "São Paulo"
+                    bairro:
+                      type: string
+                      example: "Centro"
+                    uf:
+                      type: string
+                      example: "SP"
+                    cep:
+                      type: string
+                      example: "01001000"
+                    email:
+                      type: string
+                      format: email
+                      example: "joao@email.com"
+                    cpf_cnpj:
+                      type: string
+                      example: "12345678901"
+                destinatario:
+                  type: object
+                  required:
+                    - nome
+                    - logradouro
+                    - numero
+                    - cidade
+                    - bairro
+                    - uf
+                    - cep
+                    - email
+                  properties:
+                    nome:
+                      type: string
+                      example: "Loja ABC"
+                    logradouro:
+                      type: string
+                      example: "Av. Paulista"
+                    numero:
+                      type: string
+                      example: "1500"
+                    complemento:
+                      type: string
+                      example: "10º andar"
+                    referencia:
+                      type: string
+                      example: "Ed. Azul"
+                    cidade:
+                      type: string
+                      example: "São Paulo"
+                    bairro:
+                      type: string
+                      example: "Bela Vista"
+                    uf:
+                      type: string
+                      example: "SP"
+                    cep:
+                      type: string
+                      example: "01310100"
+                    email:
+                      type: string
+                      format: email
+                      example: "logistica@lojaabc.com.br"
+      responses:
+        '200':
+          description: Solicitação de logística reversa criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tipo:
+                    type: string
+                    example: "Logística Reversa Correios"
+                  numero_coleta:
+                    type: string
+                    example: "123456789"
+                  quantidade_itens:
+                    type: integer
+                    example: 1
+                  referencia:
+                    type: string
+                    example: "PEDIDO12345"
+                  prazo:
+                    type: string
+                    format: date-time
+                    example: "2025-06-15 23:59:59"
+                  data_solicitacao:
+                    type: string
+                    format: date
+                    example: "2025-05-24"
+                  hora_solicitacao:
+                    type: string
+                    format: time
+                    example: "14:22:00"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/quotes/metadados:
+    post:
+      summary: Contratação de Frete 
+      description: >
+        Método para inserir vários metadados em um frete e enviar para a transportadora.
+        Deve ser informado um identificador único do frete, pedido ou nota fiscal no corpo.
+      operationId: enviarMetadados
+      tags:
+        - Envio de Metadados para Frete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                freight_id:
+                  type: string
+                  description: Identificador do frete contratado (13 caracteres)
+                  example: "1234567890123"
+                order_number:
+                  type: string
+                  description: Número do pedido contratado
+                  example: "PED12345"
+                invoice_key:
+                  type: string
+                  description: Chave de acesso da nota fiscal
+                  example: "35190600000000000000550010000000011000000010"
+                invoice_number:
+                  type: string
+                  description: Número da nota fiscal
+                  example: "123456"
+                invoice_serie:
+                  type: string
+                  description: Série da nota fiscal (obrigatório se informado invoice_number)
+                  example: "1"
+                metadata:
+                  type: array
+                  description: Array de objetos com chave e valor dos metadados
+                  maxItems: 64
+                  items:
+                    type: object
+                    required:
+                      - key
+                      - value
+                    properties:
+                      key:
+                        type: string
+                        description: Nome do atributo de informação extra (único)
+                        maxLength: 255
+                        example: "observacao_entrega"
+                      value:
+                        type: string
+                        description: Valor do atributo
+                        maxLength: 255
+                        example: "Entregar no período da tarde"
+              required:
+                - metadata
+      responses:
+        '200':
+          description: Metadados inseridos com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  
+    delete:
+      summary: Edição de Frete 
+      description: >
+        Remove metadados de um frete. Deve ser informado no corpo da requisição um identificador único do frete, pedido ou chave da NF-e junto com a chave do metadado a ser removido.
+      operationId: deletarMetadados
+      tags:
+        - Deletar Metadados de um Frete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_frete:
+                  type: string
+                  description: Identificador do frete contratado (13 caracteres)
+                  example: "1234567890123"
+                numero_pedido:
+                  type: string
+                  description: Número do pedido contratado
+                  example: "PED12345"
+                chave_nf:
+                  type: string
+                  description: Chave de acesso da nota fiscal
+                  example: "35190600000000000000550010000000011000000010"
+                metadados_chave:
+                  type: string
+                  description: Nome da chave do metadado a ser deletado
+                  maxLength: 255
+                  example: "observacao_entrega"
+              required:
+                - metadados_chave
+      responses:
+        '200':
+          description: Metadado deletado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id_frete:
+                    type: string
+                    description: Identificador do frete
+                    example: "1234567890123"
+                  metadados:
+                    type: array
+                    description: Lista das chaves de metadados restantes após a exclusão
+                    items:
+                      type: string
+                required:
+                  - id_frete
+                  - metadados
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /skus/products:
+    post:
+      summary: Gestão de SKUs
+      description: >
+        Insere uma lista de produtos/SKUs. Caso o SKU já exista, ele será atualizado.
+      operationId: inserirProdutos
+      tags:
+        - Inserir ou Atualizar Produtos/SKUs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                products:
+                  type: array
+                  maxItems: 1000
+                  items:
+                    type: object
+                    properties:
+                      origin:
+                        type: string
+                        description: Origem do produto (opcional)
+                        example: ""
+                      sku:
+                        type: string
+                        description: SKU do produto
+                        example: "SKU12345"
+                      category:
+                        type: integer
+                        description: Código da categoria do produto na Frete Rápido
+                        example: 101
+                      description:
+                        type: string
+                        description: Descrição do produto/SKU
+                        example: "Produto de exemplo"
+                      volumes:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: object
+                          properties:
+                            description:
+                              type: string
+                              description: Descrição do volume
+                              example: "Caixa"
+                            tag:
+                              type: string
+                              description: Tag para agrupamento ou identificação do volume
+                              example: "fragil"
+                            amount:
+                              type: integer
+                              description: Quantidade deste volume que terá no SKU
+                              example: 2
+                            height:
+                              type: number
+                              format: float
+                              description: Altura unitária do volume em metros
+                              example: 0.3
+                            width:
+                              type: number
+                              format: float
+                              description: Largura unitária do volume em metros
+                              example: 0.5
+                            length:
+                              type: number
+                              format: float
+                              description: Comprimento unitário do volume em metros
+                              example: 0.4
+                            weight:
+                              type: number
+                              format: float
+                              description: Peso unitário do volume em Kg
+                              example: 1.2
+                            price:
+                              type: number
+                              format: float
+                              description: Valor unitário do volume (opcional)
+                              example: 50.00
+                            consolidate:
+                              type: boolean
+                              description: Pode consolidar
+                              example: true
+                            overlaid:
+                              type: boolean
+                              description: Pode sobrepor
+                              example: false
+                            rotate:
+                              type: boolean
+                              description: Pode rotacionar
+                              example: true
+                          required:
+                            - amount
+                            - height
+                            - width
+                            - length
+                            - weight
+                            - consolidate
+                            - overlaid
+                            - rotate
+                    required:
+                      - sku
+                      - category
+                      - volumes
+              required:
+                - products
+      responses:
+        '201':
+          description: Produtos inseridos ou atualizados com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      summary: Gestão de SKUs 
+      description: >
+        Método responsável por retornar os SKUs cadastrados na Frete Rápido de acordo com os parâmetros da URL.
+      tags:
+        - Obter Produtos
+      parameters:
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tag de detalhamento do volume
+          example: "fragil"
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+          description: SKU consultado
+          example: "SKU123456"
+        - name: onlyInvalids
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Apenas produtos inválidos
+          example: false
+        - name: description
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Descrição do SKU
+          example: true
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Código da categoria do produto na Frete Rápido
+          example: 10
+        - name: page
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Página atual
+          example: 1
+        - name: perPage
+          in: query
+          required: true
+          schema:
+            type: integer
+            maximum: 100
+          description: Quantidade de SKUs por página
+          example: 20
+      responses:
+        '200':
+          description: Lista de produtos/SKUs retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Quantidade de SKUs retornados
+                    example: 1
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          description: Identificador do SKU na Frete Rápido
+                          example: "5f8d0d55b54764421b7156c3"
+                        shipperCnpj:
+                          type: string
+                          description: CNPJ da empresa onde o SKU está cadastrado
+                          example: "12345678000199"
+                        sku:
+                          type: string
+                          description: SKU do produto
+                          example: "SKU123456"
+                        active:
+                          type: boolean
+                          description: Se o SKU está ativo
+                          example: true
+                        category:
+                          type: integer
+                          description: Código da categoria na Frete Rápido
+                          example: 10
+                        description:
+                          type: string
+                          description: Descrição do SKU
+                          example: "Produto eletrônico XYZ"
+                        origin:
+                          type: string
+                          description: Origem que o SKU foi inserido
+                          example: "ERP"
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          description: Data da última atualização do produto
+                          example: "2025-05-24 12:34:56"
+                        volumes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              description:
+                                type: string
+                                description: Descrição do volume
+                                example: "Caixa pequena"
+                              tag:
+                                type: string
+                                description: Tag do volume
+                                example: "fragil"
+                              amount:
+                                type: integer
+                                description: Quantidade do volume
+                                example: 10
+                              width:
+                                type: number
+                                format: float
+                                description: Largura unitária do volume em metros
+                                example: 0.5
+                              height:
+                                type: number
+                                format: float
+                                description: Altura unitária do volume em metros
+                                example: 0.3
+                              length:
+                                type: number
+                                format: float
+                                description: Comprimento unitário do volume em metros
+                                example: 0.4
+                              weight:
+                                type: number
+                                format: float
+                                description: Peso unitário do volume em Kg
+                                example: 1.2
+                              price:
+                                type: number
+                                format: float
+                                description: Preço unitário do volume
+                                example: 100.0
+                              consolidate:
+                                type: boolean
+                                description: Pode consolidar
+                                example: true
+                              overlaid:
+                                type: boolean
+                                description: Pode sobrepor
+                                example: false
+                              rotate:
+                                type: boolean
+                                description: Pode rotacionar
+                                example: true
+                        categoryDescription:
+                          type: string
+                          description: Descrição da categoria do produto
+                          example: "Eletrônicos"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      summary: Gestão de SKUs
+      description: >
+        Método responsável por deletar uma lista de produtos/SKUs cadastrados na Frete Rápido de acordo com os parâmetros da URL.
+        ATENÇÂO!!! Caso nenhum filtro for informado, deletará todos os SKUs.
+      tags:
+        - Deletar Produtos
+      parameters:
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tag do volume
+          example: "fragil"
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Código da categoria do produto na Frete Rápido
+          example: 10
+        - name: skus
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Lista de SKUs separados por ponto e vírgula (;)
+          example: "SKU123;SKU456;SKU789"
+      responses:
+        '200':
+          description: Produtos deletados com sucesso
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  
+  /skus/categories:
+    get:
+      summary: Informações da Empresa 
+      description: >
+        Método para obter as categorias de produtos cadastradas na Frete Rápido.
+        Retorna uma lista de identificadores e descrições das categorias.
+      tags:
+        - Obter Categorias de Produtos
+      responses:
+        '200':
+          description: Lista de categorias de produtos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Código de identificação da categoria na Frete Rápido
+                      example: 1
+                    description:
+                      type: string
+                      description: Descrição da categoria
+                      example: "Acessório infantil"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /external/shipper/v1/stocks:
+    post:
+      summary: Cadastro de Estoque Avançado
+      description: >
+        Através desse método, é possível cadastrar/atualizar o estoque de um CD específico.
+      operationId: cadastrarEstoqueAvancado
+      tags:
+        - Cadastro de Estoque
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dc_external_id
+                - skus
+              properties:
+                dc_external_id:
+                  type: string
+                  description: Identificador externo do centro de distribuição (CD)
+                  example: "CD12345"
+                skus:
+                  type: array
+                  description: Lista de produtos com respectivos códigos e quantidades
+                  items:
+                    type: object
+                    required:
+                      - code
+                      - amount
+                    properties:
+                      code:
+                        type: string
+                        description: Código do SKU
+                        example: "SKU123456"
+                      amount:
+                        type: integer
+                        description: Quantidade em estoque
+                        minimum: 0
+                        example: 10
+      responses:
+        '200':
+          description: Estoque cadastrado ou atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Estoque atualizado com sucesso"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  responses:
+    Success:
+      description: Requisição processada com sucesso
+    Unauthorized:
+      description: Não autorizado (Token inválido)
+    Forbidden:
+      description: Acesso não permitido
+    NotFound:
+      description: Informação não localizada
+    Conflict:
+      description: Conflito (Status fora do fluxo permitido)
+    UnprocessableEntity:
+      description: Erro de sintaxe da requisição
+    InternalServerError:
+      description: Erro do servidor
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
+security:
+  - BearerAuth: []
+x-original-swagger-version: "2.0"
+          

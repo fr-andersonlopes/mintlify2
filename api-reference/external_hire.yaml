@@ -1,0 +1,690 @@
+openapi: 3.0.1
+info:
+  title: APIs Frete Rápido - Contratação de Frete
+  description: API oficial da Frete Rápido para integração com e-commerces e ERPs.
+  contact:
+    name: Frete Rápido
+    url: https://freterapido.com.br
+  version: 1.0.1
+  x-logo:
+    altText: Logo Frete Rápido
+    url: https://freterapido.com.br/wp-content/uploads/2023/11/logo-teste-2-768x168.png
+servers:
+  - url: https://api.freterapido.com/api/v2
+    description: Servidor de Produção
+paths:
+  /hire:
+    post:
+      tags:
+        - Contratação
+      summary: Contratação de frete
+      operationId: hireSync
+      requestBody:
+        description: Requisição de contratação de frete
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/pbHireRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHireResponse"
+        "400":
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      x-codegen-request-body-name: body
+  /hire/async:
+    post:
+      tags:
+        - Contratação
+      summary: Contratação de frete
+      operationId: hireAsync
+      requestBody:
+        description: Requisição de contratação de frete
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/pbHireRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHireResponse"
+      x-codegen-request-body-name: body
+  /hire/freight/{freight_id}/status:
+    get:
+      tags:
+        - Consulta de Frete
+      summary: Consulta de frete
+      operationId: getFreightDetails
+      parameters:
+        - name: freight_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHireResponse"
+  /hire/healthz:
+    get:
+      tags:
+        - Contratação
+      summary: Health check endpoint
+      operationId: healthz
+      responses:
+        "200":
+          description: :)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHealthzResponse"
+        "500":
+          description: :(
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHealthzResponse"
+  /hire/import-order:
+    post:
+      tags:
+        - Importação de Pedido
+      summary: Importação de Pedido
+      operationId: importOrderSync
+      requestBody:
+        description: Requisição de importação de pedido
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/pbImportOrderRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHireResponse"
+      x-codegen-request-body-name: body
+  /hire/import-order/async:
+    post:
+      tags:
+        - Importação de Pedido
+      summary: Importação de Pedido
+      operationId: importOrderAsync
+      requestBody:
+        description: Requisição de importação de pedido
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/pbImportOrderRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pbHireResponse"
+      x-codegen-request-body-name: body
+components:
+  schemas:
+    pbAddress:
+      title: Address
+      required:
+        - city
+        - neighborhood
+        - number
+        - state
+        - street
+        - zipcode
+      type: object
+      properties:
+        zipcode:
+          type: string
+          description: CEP do endereço.
+        street:
+          type: string
+          description: Logradouro do endereço.
+        number:
+          type: string
+          description: Número do endereço.
+        neighborhood:
+          type: string
+          description: Bairro do endereço.
+        complement:
+          type: string
+          description: Complemento do endereço.
+        city:
+          type: string
+          description: Cidade do endereço.
+        state:
+          type: string
+          description: Estado do endereço.
+      description: Objeto com dados do endereço.
+    pbCarrier:
+      title: Carrier
+      type: object
+      properties:
+        name:
+          type: string
+          description: Razão social da transportadora
+        register_number:
+          type: string
+          description: CNPJ da transportadora
+        service:
+          type: string
+          description:
+            O service é utilizado na comparação ao contratar o frete da
+            mesma transportadora
+        service_description:
+          type: string
+          description: Descrição do serviço
+        correios_service_code:
+          type: string
+          description: Código do serviço dos correios
+      description: Objeto com dados da transportadora
+    pbContentDeclaration:
+      title: Content Declaration
+      type: object
+      properties:
+        number:
+          type: string
+          description: Número da declaração de conteúdo.
+        description:
+          type: string
+          description: Descrição da declaração de conteúdo.
+        total_value:
+          type: number
+          description: Valor total dos itens da declaração de conteúdo.
+          format: double
+        items_value:
+          type: number
+          description: Quantidade de itens da declaração de conteúdo.
+          format: double
+        issue_date:
+          type: string
+          description: Data de emissão da declaração de conteúdo.
+      description: Objeto com os dados de Declaração de Conteúdo.
+    pbDispatcher:
+      title: Dispatcher
+      required:
+        - address
+        - name
+        - register_number
+      type: object
+      properties:
+        register_number:
+          type: string
+          description: CNPJ do expedidor.
+        name:
+          type: string
+          description: Nome do expedidor.
+        state_inscription:
+          type: string
+          description: Inscrição estadual do expedidor.
+        address:
+          $ref: "#/components/schemas/pbAddress"
+      description: Objeto com alguns dados do ponto de expedição.
+    pbHealthzResponse:
+      title: Healthz Response
+      type: object
+      properties:
+        message:
+          type: string
+          description: Health status message
+      description: Response for health check endpoint
+    pbHireRequest:
+      title: Request Hire
+      type: object
+      properties:
+        shipper:
+          $ref: "#/components/schemas/pbShipper"
+        dispatcher:
+          $ref: "#/components/schemas/pbDispatcher"
+        offer:
+          $ref: "#/components/schemas/pbOffer"
+        recipient:
+          $ref: "#/components/schemas/pbRecipient"
+        metadata:
+          type: array
+          description:
+            Array de objetos contendo chave e valor com as informações
+            adicionais da contratação.
+          items:
+            $ref: "#/components/schemas/pbMetadata"
+        order_number:
+          type: string
+          description: Número do pedido na loja.
+        order_date:
+          type: string
+          description: Data de criação do pedido na loja.
+        billing_date:
+          type: string
+          description: Data de faturamento do pedido na loja.
+        consumer_delivery_deadline:
+          type: string
+          description:
+            "Prazo de entrega ao consumidor. Caso enviada, sobrescreverá\
+            \ a data calculada pela FR."
+        payment_method:
+          type: string
+          description: Forma de pagamento do pedido.
+        notes:
+          type: string
+          description: Observação(texto livre) do cliente sobre o pedido.
+        freight_value:
+          type: string
+          description: Valor do frete cobrado ao consumidor final.
+        invoices:
+          type: array
+          description: Array de objetos com os dados de Notas Fiscais.
+          items:
+            $ref: "#/components/schemas/pbInvoice"
+        content_declarations:
+          type: array
+          description: Array de objetos com os dados de Declaração de Conteúdo.
+          items:
+            $ref: "#/components/schemas/pbContentDeclaration"
+        collection_date:
+          type: string
+          description:
+            Data de possível coleta informada pelo Embarcador. Atenção!
+            Este poderá ser aceito ou recusado pela Transportadora.
+        channel:
+          type: string
+          description: Canal de venda
+        subchannel:
+          type: string
+          description: Subcanal de venda
+        idempotency_key:
+          type: string
+          description:
+            "Chave única para identificar a operação. Atenção! Esta chave\
+            \ é obrigatória e única por operação, pois evita duplicidade de operaç\
+            ões."
+      description: Requisição de contratação de frete
+    pbHireResponse:
+      title: Response
+      type: object
+      properties:
+        freight_id:
+          type: string
+          description: Identificador do frete contratado na Frete Rápido. Pode ser
+            utilizado para rastrear o frete.
+        tracking_url:
+          type: string
+          description: URL de rastreio do frete pelo ID Frete Rápido.
+        order_number:
+          type: string
+          description: Número do pedido do frete contratado na Frete Rápido.
+        dispatcher:
+          type: string
+          description: Informação do expedidor do frete.
+        recipient:
+          type: string
+          description: Informação do destinatário do frete.
+        hire_date:
+          type: string
+          description: Data e hora da contratação do frete.
+        status:
+          type: string
+          description: "Status da contratação do frete. Possíveis valores: 'processing',\
+            \ 'alreadyHired', 'hired', 'notFound'."
+          enum:
+          - processing
+          - alreadyHired
+          - hired
+          - notFound
+      example:
+        freight_id: FR250401K0EKX
+        tracking_url: https://ondeestameupedido.com.br/FR250401K0EKX
+        order_number: "1744745751"
+        dispatcher: "00000000000000"
+        recipient: "00000000000"
+        hire_date: 2025-04-29T15:43:14-03:00
+        status: hired
+    pbImportOrderRequest:
+      title: Request Import Order
+      required:
+        - shipper
+      type: object
+      properties:
+        shipper:
+          $ref: "#/components/schemas/pbShipper"
+        recipient:
+          $ref: "#/components/schemas/pbRecipient"
+        dispatcher:
+          $ref: "#/components/schemas/pbDispatcher"
+        volumes:
+          type: array
+          description: Dados dos volumes do ponto de expedição.
+          items:
+            $ref: "#/components/schemas/pbVolume"
+        metadata:
+          type: array
+          description:
+            Array de objetos contendo chave e valor com as informações
+            adicionais da contratação.
+          items:
+            $ref: "#/components/schemas/pbMetadata"
+        carrier:
+          $ref: "#/components/schemas/pbCarrier"
+        not_quote:
+          type: boolean
+          description: Importação do pedido sem recotação do frete
+        delivery_time:
+          type: integer
+          description: Prazo de entrega em dias
+          format: int64
+        original_delivery_time:
+          type: integer
+          description: Prazo de entrega original em dias
+          format: int64
+        type_hiring:
+          $ref: "#/components/schemas/pbTypeHiring"
+        total_price:
+          type: number
+          description:
+            "Preço total do pedido. Se informado, substituirá proporcionalmente\
+            \ o valor informado nos volumes."
+          format: float
+        channel:
+          type: string
+          description: Canal de venda
+        subchannel:
+          type: string
+          description: Subcanal de venda
+        identification:
+          type: string
+          description: Identificador externo da cotação na plataforma
+        order_number:
+          type: string
+          description: Número do pedido na loja
+        parent_order_number:
+          type: string
+          description: Número do pedido pai na loja
+        order_date:
+          type: string
+          description: Data de criação do pedido na loja
+        invoiced_date:
+          type: string
+          description: Data de faturamento do pedido na loja
+        collection_date:
+          type: string
+          description:
+            Data de possível coleta informada pelo Embarcador. Atenção!
+            Este poderá ser aceito ou recusado pela Transportadora.
+        payment_type:
+          type: string
+          description: Forma de pagamento do pedido
+        notes:
+          type: string
+          description: Observação(texto livre) do cliente sobre o pedido
+        freight_value:
+          type: number
+          description: Valor do frete cobrado ao consumidor final
+          format: float
+        invoices:
+          type: array
+          description: invoiceArray de objetos com os dados de Notas Fiscais
+          items:
+            $ref: "#/components/schemas/pbInvoice"
+        content_declarations:
+          type: array
+          items:
+            $ref: "#/components/schemas/pbContentDeclaration"
+        consumer_delivery_deadline:
+          type: string
+          description:
+            "Prazo de entrega ao consumidor. Caso enviada, sobrescreverá\
+            \ a data calculada pela FR."
+        idempotency_key:
+          type: string
+          description:
+            "Chave única para identificar a operação. Atenção! Esta chave\
+            \ é obrigatória e única por operação, pois evita duplicidade de operaç\
+            ões."
+      description: Requisição de importação de pedido
+    pbInvoice:
+      title: Invoice
+      required:
+        - issue_date
+        - key
+        - number
+        - value
+        - volumes_quantity
+      type: object
+      properties:
+        number:
+          type: string
+          description: Número da nota fiscal.
+        series:
+          type: string
+          description: Série da nota fiscal.
+        cfop:
+          type: string
+          description: CFOP da nota fiscal.
+        volumes_quantity:
+          type: integer
+          description: Quantidade de volumes da nota fiscal.
+          format: int64
+        key:
+          type: string
+          description: Chave de acesso da nota fiscal.
+        value:
+          type: number
+          description: Valor total da nota fiscal.
+          format: double
+        items_value:
+          type: number
+          description: Valor total dos itens da nota fiscal.
+          format: double
+        issue_date:
+          type: string
+          description: Data de emissão da nota fiscal.
+        operation_type:
+          type: string
+          description: Tipo de operação da nota fiscal.
+        issuance_type:
+          type: string
+          description: Tipo de emissão da nota fiscal.
+        authorization_protocol:
+          type: string
+          description: Protocolo de autorização da nota fiscal.
+      description: Objeto com os dados de Notas Fiscais.
+    pbMetadata:
+      title: Metadata
+      required:
+        - key
+        - value
+      type: object
+      properties:
+        key:
+          type: string
+          description:
+            "Nome do atributo de informação extra da solicitação de coleta,\
+            \ deve ser nome único para chave."
+        value:
+          type: string
+          description: Corresponde ao valor do atributo da chave informada.
+      description: Objeto com chave e valor para informações adicionais do frete.
+    pbOffer:
+      title: Offer
+      type: object
+      properties:
+        token:
+          type: string
+          description: Token identificador da simulação.
+        id:
+          type: string
+          description: Identificador da oferta.
+      description: Objeto com alguns dados da oferta da cotação.
+    pbRecipient:
+      title: Recipient
+      required:
+        - address
+        - name
+        - register_number
+        - type
+      type: object
+      properties:
+        type:
+          type: integer
+          description: "Tipo de destinatário: 0 - PF / 1 - PJ"
+          format: int64
+          default: 0
+          enum:
+            - 0
+        register_number:
+          type: string
+          description: CNPJ ou CPF do destinatário.
+        state_inscription:
+          type: string
+          description: Inscrição estadual do destinatário.
+        name:
+          type: string
+          description: Nome do destinatário.
+        email:
+          type: string
+          description: E-mail do destinatário.
+        phone:
+          type: string
+          description: Telefone do destinatário.
+        address:
+          $ref: "#/components/schemas/pbAddress"
+      description: Objeto com alguns dados do destinatário.
+    pbShipper:
+      title: Shipper
+      type: object
+      properties:
+        register_number:
+          type: string
+          description: CNPJ do embarcador.
+        platform_code:
+          type: string
+          description: Código da plataforma do embarcador.
+      description: Objeto com dados da conta do remetente.
+      example:
+        register_number: "00000000000000000000"
+        platform_code: "103013"
+    pbTypeHiring:
+      title: Type Hiring
+      type: string
+      description:
+        "A propriedade \"type_hiring\" será utilizada para definir a regra\
+        \ de contratação.Se deverá ser a de (1) menor preço, ou (2) menor prazo, ou\
+        \ a (3) mesma transportadora informada na requisição. Caso \"not_quote\" seja\
+        \ true, \"type_hiring\" deve ser 3"
+      default: TYPE_HIRING_UNSPECIFIED
+      enum:
+        - TYPE_HIRING_UNSPECIFIED
+        - TYPE_HIRING_LOWEST_PRICE
+        - TYPE_HIRING_SHORTEST_DELIVERY_TIME
+        - TYPE_HIRING_SAME_CARRIER
+    pbVolume:
+      title: Volume
+      required:
+        - amount
+        - amount_volumes
+        - category
+        - description
+        - height
+        - length
+        - sku
+        - tag
+        - unitary_price
+        - unitary_weight
+        - width
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Quantidade do mesmo volume/item.
+          format: int64
+        amount_volumes:
+          type: integer
+          description: Quantidade de volumes do produto ao qual este volume pertence.
+          format: int64
+        category:
+          type: string
+          description: Tipo do volume/Categoria do produto.
+        sku:
+          type: string
+          description: SKU do volume/produto informado.
+        tag:
+          type: string
+          description: Tag do volume/produto informado.
+        description:
+          type: string
+          description: Descrição do produto/item.
+        height:
+          type: number
+          description: Altura em Metros do volume/produto unitário.
+          format: double
+        width:
+          type: number
+          description: Largura em Metros do volume/produto unitário.
+          format: double
+        length:
+          type: number
+          description: Comprimento em Metros do volume/produto unitário.
+          format: double
+        unitary_price:
+          type: number
+          description: Valor unitário do volume/item informado.
+          format: double
+        unitary_weight:
+          type: number
+          description: Peso unitário (em Kg) do volume/item.
+          format: double
+        consolidate:
+          type: boolean
+          description: "Consolidar volume? Default: false"
+          default: false
+        overlaid:
+          type: boolean
+          description: Sobrepor volume sobre outro?
+          default: false
+        rotate:
+          type: boolean
+          description: "Rotacionar/Tombar volume? Default: false"
+          default: false
+      description: Objeto com dados do volume.
+    ErrorResponse:
+        type: object
+        properties:
+            error:
+              type: string
+              description: Mensagem de erro
+        example:
+            error: ""
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+x-original-swagger-version: "2.0"

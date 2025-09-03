@@ -28,7 +28,7 @@
         "groups": [
           {
             "group": "API documentation",
-            "openapi": "/api-reference/auth-external.json"
+            "openapi": "/api-reference/external_hire.yaml"
           }
         ]
       }
