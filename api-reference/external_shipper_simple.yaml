@@ -1,0 +1,52 @@
+openapi: 3.0.1
+info:
+  title: APIs Frete Rápido - Embarcador
+  version: 1.0.0
+  description: API oficial da Frete Rápido para integração com e-commerces e ERPs.
+  contact:
+    name: Frete Rápido
+    url: https://freterapido.com.br
+servers:
+  - url: https://api.freterapido.com
+    description: Servidor de Produção
+  - url: https://api.homolog-freterapido.com
+    description: Servidor de Homologação
+paths:
+  /external/shipper/v1/check-status:
+    post:
+      summary: Informações da Empresa
+      description: Permite verificar se as credenciais são válidas junto à API da Frete Rápido.
+      tags:
+        - Verificação de Credenciais
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cnpj
+                - codigo_plataforma
+              properties:
+                cnpj:
+                  type: string
+                  description: CNPJ cadastrado na Frete Rápido
+                  example: "12345678000199"
+                codigo_plataforma:
+                  type: string
+                  description: Código único da sua plataforma
+                  example: "meucodigo01"
+      responses:
+        '200':
+          description: Requisição bem-sucedida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bloqueio:
+                    type: boolean
+                    example: true
+                  saldo:
+                    type: integer
+                    example: 0
