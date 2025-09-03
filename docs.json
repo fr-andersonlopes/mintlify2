@@ -27,19 +27,19 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "Documentação",
+            "group": "Autenticação",
             "openapi": "/api-reference/auth-external.yaml"
           },
-           {
-            "group": "Documentação",
+          {
+            "group": "Transportadora",
             "openapi": "/api-reference/external_carrier.yaml"
           },
-           {
-            "group": "Documentação",
+          {
+            "group": "Contratação",
             "openapi": "/api-reference/external_hire.yaml"
           },
-           {
-            "group": "Documentação",
+          {
+            "group": "Embarcador",
             "openapi": "/api-reference/external_shipper.yaml"
           }
         ]
