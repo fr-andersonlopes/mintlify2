@@ -28,19 +28,31 @@
         "groups": [
           {
             "group": "Autenticação",
-            "openapi": "/api-reference/auth-external.yaml"
+            "openapi": {
+              "source": "/api-reference/auth_external.yaml",
+              "directory": "api-reference"
+            }
           },
           {
             "group": "Transportadora",
-            "openapi": "/api-reference/external_carrier.yaml"
+            "openapi": {
+              "source": "/api-reference/external_carrier.yaml",
+              "directory": "api-reference"
+            }
           },
           {
             "group": "Contratação",
-            "openapi": "/api-reference/external_hire.yaml"
+            "openapi": {
+              "source": "/api-reference/external_hire.yaml",
+              "directory": "api-reference"
+            }
           },
           {
             "group": "Embarcador",
-            "openapi": "/api-reference/external_shipper.yaml"
+            "openapi": {
+              "source": "/api-reference/external_shipper.yaml",
+              "directory": "api-reference"
+            }
           }
         ]
       }
