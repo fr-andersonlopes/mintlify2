@@ -28,9 +28,7 @@
         "groups": [
           {
             "group": "API documentation",
-            "pages": [
-              "api-reference/auth-external.json"
-            ]
+            "openapi": "/path/to/openapi.json"
           }
         ]
       }
