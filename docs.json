@@ -27,44 +27,23 @@
         "groups": [
           {
             "group": "Autenticação",
-            "openapi": {
-              "source": "/api-reference/auth_external.yaml",
-              "directory": "api-reference"
-            }
+            "openapi": "/api-reference/auth_external.yaml"
           },
           {
             "group": "Transportadora",
-            "openapi": {
-              "source": "/api-reference/external_carrier.yaml",
-              "directory": "api-reference"
-            }
+            "openapi": "/api-reference/external_carrier.yaml"
           },
           {
             "group": "Contratação",
-            "openapi": {
-              "source": "/api-reference/external_hire.yaml",
-              "directory": "api-reference"
-            }
+            "openapi": "/api-reference/external_hire.yaml"
           },
           {
             "group": "Embarcador",
-            "openapi": {
-              "source": "/api-reference/external_shipper.yaml",
-              "directory": "api-reference"
-            }
+            "openapi": "/api-reference/external_shipper.yaml"
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Ajuda",
-          "href": "https://freterapido.movidesk.com/kb",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.png",
